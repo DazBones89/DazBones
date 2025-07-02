@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>選手紹介</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-white text-gray-800">
+<div class="max-w-4xl mx-auto p-4">
+    <h1 class="text-3xl font-bold mb-4">選手紹介</h1>
+    <ul class="space-y-2">
+        <li th:each="player : ${players}" class="p-3 bg-blue-100 rounded shadow">
+            <span th:text="${player}"></span>
+        </li>
+    </ul>
+</div>
+</body>
+</html>
