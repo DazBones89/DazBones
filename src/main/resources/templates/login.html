@@ -1,0 +1,13 @@
+<!-- login.html -->
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org" th:replace="layout :: layout(~{::section})">
+<section>
+    <div class="max-w-md mx-auto p-4">
+        <h2 class="text-xl font-bold mb-4">ログイン</h2>
+        <form th:action="@{/login}" method="post">
+            <label class="block mb-2">ログインコード：<input type="text" name="code" class="border rounded px-2 py-1 w-full" /></label>
+            <button type="submit" class="mt-2 px-4 py-1 bg-blue-500 text-white rounded">ログイン</button>
+        </form>
+    </div>
+</section>
+</html>

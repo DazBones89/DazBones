@@ -1,0 +1,30 @@
+<!-- layout.html -->
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title th:replace="~{::title}">DazBones ホームページ</title>
+  <script src="https://snapwidget.com/js/snapwidget.js"></script>
+  <script>
+    function toggleDarkMode() {
+      document.documentElement.classList.toggle('dark');
+    }
+  </script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-white text-gray-900 dark:bg-gray-800 dark:text-white" th:fragment="layout(content)">
+<header class="text-center p-6 bg-blue-200 dark:bg-blue-700">
+  <h1 class="text-3xl font-bold">DazBones 草野球チーム</h1>
+  <p class="text-sm mt-1">公式ホームページ</p>
+  <button onclick="toggleDarkMode()" class="mt-3 px-4 py-1 bg-gray-300 dark:bg-gray-600 rounded">
+    🌙 ライト／ダーク切替
+  </button>
+</header>
+
+<main class="p-4" th:insert="${content}"></main>
+
+<footer class="mt-10 p-4 text-center text-xs text-gray-500 dark:text-gray-400">
+  <p>© 2025 DazBones 草野球チーム | <a href="https://github.com/DazBones89/DazBones" class="underline">DazBones</a></p>
+</footer>
+</body>
+</html>
