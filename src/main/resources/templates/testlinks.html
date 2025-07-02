@@ -1,18 +1,18 @@
 <!DOCTYPE html>
-<html lang="ja" xmlns:th="http://www.thymeleaf.org" th:replace="layout :: layout">
+<html lang="ja" xmlns:th="http://www.thymeleaf.org" th:replace="layout :: layout(~{::section})">
 <section>
-    <h2 class="text-xl font-bold mb-4">ページ確認リンク一覧</h2>
-    <ul class="list-disc pl-6 space-y-2">
-        <li><a th:href="@{/}" class="text-blue-500 underline">🏠 メインページ（main.html）</a></li>
-        <li><a th:href="@{/login}" class="text-blue-500 underline">🔐 ログインページ（login.html）</a></li>
-        <li><a th:href="@{/admin/code}" class="text-blue-500 underline">🛠 管理者コード設定（adminCode.html）</a></li>
-        <li><a th:href="@{/gear}" class="text-blue-500 underline">🧢 道具管理ページ（gear.html）</a></li>
-        <li><a th:href="@{/fee}" class="text-blue-500 underline">💰 部費管理ページ（fee.html）</a></li>
-        <li><a th:href="@{/history}" class="text-blue-500 underline">📖 大会履歴ページ（history.html）</a></li>
-        <li><a th:href="@{/player}" class="text-blue-500 underline">⚾ 選手紹介ページ（player.html）</a></li>
-        <li><a th:href="@{/policy}" class="text-blue-500 underline">📜 プライバシーポリシー（policy.html）</a></li>
-        <li><a th:href="@{/system}" class="text-blue-500 underline">🖥 システム情報（systemInfo.html）</a></li>
-        <li><a th:href="@{/survey}" class="text-blue-500 underline">📋 アンケートページ（survey.html）</a></li>
+    <h2 class="text-xl font-bold mb-4">ページ確認リンク</h2>
+    <ul class="list-disc pl-6 space-y-1">
+        <li><a th:href="@{/}" class="underline text-blue-600">🏠 メインページ</a></li>
+        <li><a th:href="@{/login}" class="underline text-blue-600">🔑 ログインページ</a></li>
+        <li><a th:href="@{/player}" class="underline text-blue-600">⚾ 選手紹介ページ</a></li>
+        <li><a th:href="@{/history}" class="underline text-blue-600">📚 大会・活動履歴ページ</a></li>
+        <li><a th:href="@{/survey}" class="underline text-blue-600">📅 アンケートページ</a></li>
+        <li><a th:href="@{/gear}" class="underline text-blue-600">🧢 道具管理ページ</a></li>
+        <li><a th:href="@{/fee}" class="underline text-blue-600">💰 部費管理ページ</a></li>
+        <li><a th:href="@{/admin/code}" class="underline text-blue-600">🛠️ 管理者コード設定</a></li>
+        <li><a th:href="@{/system}" class="underline text-blue-600">🔧 システム情報</a></li>
+        <li><a th:href="@{/policy}" class="underline text-blue-600">🔐 プライバシーポリシー</a></li>
     </ul>
 </section>
 </html>

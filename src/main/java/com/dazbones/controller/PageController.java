@@ -66,4 +66,9 @@ public class PageController {
     public String surveyPage() {
         return "survey";
     }
+
+    @GetMapping("/testlinks")
+    public String testLinksPage() {
+        return "testlinks";
+    }
 }
