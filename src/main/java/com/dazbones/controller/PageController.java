@@ -1,8 +1,10 @@
 package com.dazbones.controller;
 
+import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import com.dazbones.model.UserSession;
 
 import java.util.List;
 
@@ -70,5 +72,16 @@ public class PageController {
     @GetMapping("/testlinks")
     public String testLinksPage() {
         return "testlinks";
+    }
+
+    @GetMapping("/main")
+    public String mainPage(HttpSession session, Model model) {
+        UserSession user = (UserSession) session.getAttribute("user");
+        if (user != null) {
+            model.addAttribute("role", user.getRole());
+        } else {
+            model.addAttribute("role", "viewer");
+        }
+        return "main";
     }
 }
