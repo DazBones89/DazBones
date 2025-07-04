@@ -1,0 +1,36 @@
+<!-- history.html -->
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org"
+      th:replace="layout :: layout(~{::body})">
+<head>
+    <title>活動履歴 - DazBones</title>
+</head>
+<body>
+<section>
+    <h2 class="text-xl font-semibold mb-4 text-center">大会・活動履歴</h2>
+
+    <div class="space-y-4">
+        <!-- 仮の大会履歴データ -->
+        <div class="border p-4 rounded bg-white dark:bg-gray-700 shadow">
+            <h3 class="text-lg font-bold">2025年 春季大会</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-300">日付: 2025年4月15日</p>
+            <p class="mt-2">結果: 準優勝（3勝1敗）</p>
+            <p class="mt-1">メモ: チームの団結力が光った大会でした！</p>
+            <div class="mt-2" th:if="${session.role == 'admin' or session.role == 'editor'}">
+                <button class="text-blue-600 hover:underline">編集</button>
+            </div>
+        </div>
+
+        <div class="border p-4 rounded bg-white dark:bg-gray-700 shadow">
+            <h3 class="text-lg font-bold">2024年 秋季練習試合</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-300">日付: 2024年10月8日</p>
+            <p class="mt-2">結果: 2勝2敗</p>
+            <p class="mt-1">メモ: 若手メンバーの活躍が目立ちました！</p>
+            <div class="mt-2" th:if="${session.role == 'admin' or session.role == 'editor'}">
+                <button class="text-blue-600 hover:underline">編集</button>
+            </div>
+        </div>
+    </div>
+</section>
+</body>
+</html>
