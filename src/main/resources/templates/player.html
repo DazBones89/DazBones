@@ -1,12 +1,40 @@
 <!-- player.html -->
 <!DOCTYPE html>
-<html lang="ja" xmlns:th="http://www.thymeleaf.org" th:replace="layout :: layout(~{::section})">
-<section>
-    <h2 class="text-xl font-bold mb-4">選手紹介</h2>
-    <ul class="space-y-2">
-        <li th:each="player : ${players}" class="p-3 bg-blue-100 rounded shadow">
-            <span th:text="${player}"></span>
-        </li>
-    </ul>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org"
+      th:replace="layout :: layout(~{::body})">
+<head>
+    <title>選手紹介 - DazBones</title>
+</head>
+<body>
+
+<section class="mt-4 text-center">
+    <h2 class="text-2xl font-bold mb-2">⚾ 選手紹介</h2>
+    <p class="text-sm text-gray-500 dark:text-gray-300">DazBonesの仲間たち</p>
 </section>
+
+<!-- 管理者・編集者向け：追加・編集ボタン -->
+<div class="text-center mt-4 space-x-2"
+     th:if="${session.role} == 'admin' or ${session.role} == 'editor'">
+    <a href="/player/add" class="px-4 py-1 bg-green-500 text-white rounded hover:bg-green-600">選手を追加</a>
+    <a href="/player/upload" class="px-4 py-1 bg-blue-500 text-white rounded hover:bg-blue-600">画像アップロード</a>
+</div>
+
+<!-- 選手一覧 -->
+<section class="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-6 px-4">
+    <div th:each="player : ${players}" class="bg-white dark:bg-gray-700 rounded shadow p-4 text-center">
+        <img th:src="@{'/images/players/' + ${player.imageFileName}}"
+             alt="選手写真"
+             class="w-24 h-24 rounded-full mx-auto object-cover border">
+        <h3 class="text-lg font-semibold mt-2" th:text="${player.name}">選手名</h3>
+        <p class="text-sm text-gray-600 dark:text-gray-300 mt-1" th:text="${player.position}">ポジション</p>
+
+        <!-- 編集ボタン（管理者・編集者のみ） -->
+        <div class="mt-2" th:if="${session.role} == 'admin' or ${session.role} == 'editor'">
+            <a th:href="@{'/player/edit/' + ${player.id}}"
+               class="text-blue-600 dark:text-blue-300 underline text-sm">編集</a>
+        </div>
+    </div>
+</section>
+
+</body>
 </html>

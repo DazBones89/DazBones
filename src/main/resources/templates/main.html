@@ -1,10 +1,55 @@
 <!-- main.html -->
 <!DOCTYPE html>
-<html lang="ja" xmlns:th="http://www.thymeleaf.org" th:replace="layout :: layout(~{::section})">
-<section>
-    <h2 class="text-xl font-semibold text-center mb-4">Instagram 投稿</h2>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org"
+      th:replace="layout :: layout(~{::body})">
+<head>
+    <title>ホーム - DazBones</title>
+</head>
+<body>
+
+<!-- 集合写真（仮画像） -->
+<section class="mt-4 text-center">
+    <img src="/images/group-photo.jpg" alt="集合写真"
+         class="mx-auto rounded shadow-md max-w-full h-auto">
+    <p class="text-sm text-gray-500 dark:text-gray-300 mt-1">※ 管理者が後から画像変更可能</p>
+</section>
+
+<!-- お知らせ -->
+<section class="mt-6 bg-yellow-100 dark:bg-yellow-800 p-4 rounded shadow-sm">
+    <h2 class="text-lg font-semibold mb-2">📢 お知らせ</h2>
+    <p th:text="${newsText != null} ? ${newsText} : '現在、重要なお知らせはありません。'">
+        現在、重要なお知らせはありません。
+    </p>
+</section>
+
+<!-- Instagram -->
+<section class="mt-6">
+    <h2 class="text-lg font-semibold text-center mb-2">📸 Instagram 投稿</h2>
     <div class="flex justify-center">
-        <iframe src="https://snapwidget.com/embed/1101455" class="snapwidget-widget" allowtransparency="true" frameborder="0" scrolling="no" style="border:none; overflow:hidden; width:100%; max-width:900px; height:300px;" title="Instagram"></iframe>
+        <iframe src="https://snapwidget.com/embed/1101455"
+                class="snapwidget-widget"
+                allowtransparency="true"
+                frameborder="0"
+                scrolling="no"
+                style="border:none; overflow:hidden; width:100%; max-width:900px; height:300px;"
+                title="Instagram投稿表示">
+        </iframe>
     </div>
 </section>
+
+<!-- 今後の活動予定 -->
+<section class="mt-6">
+    <h2 class="text-lg font-semibold mb-2">🏟 今後の活動予定</h2>
+    <div>
+        <p>次回試合：2025年7月14日（日） vs BlueStars</p>
+        <p>練習予定：2025年7月6日（土） 午後2時〜 城南グラウンド</p>
+    </div>
+</section>
+
+<!-- 利用規約リンク -->
+<section class="mt-8 text-center text-sm text-gray-500 dark:text-gray-300">
+    <a href="/policy" class="underline">利用規約 / プライバシーポリシー</a>
+</section>
+
+</body>
 </html>

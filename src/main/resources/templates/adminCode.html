@@ -1,14 +1,20 @@
 <!-- adminCode.html -->
 <!DOCTYPE html>
-<html lang="ja" xmlns:th="http://www.thymeleaf.org" th:replace="layout :: layout(~{::section})">
-<section>
-  <div class="max-w-md mx-auto">
-    <h2 class="text-lg font-bold mb-4">コード設定</h2>
-    <form th:action="@{/admin/code}" method="post">
-      <label>管理者コード：<input type="text" name="adminCode" class="border px-2 py-1 w-full" /></label><br/>
-      <label>編集者コード：<input type="text" name="editorCode" class="border px-2 py-1 w-full mt-2" /></label><br/>
-      <button type="submit" class="mt-2 bg-blue-500 text-white px-4 py-1 rounded">保存</button>
-    </form>
-  </div>
-</section>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>管理者コード設定</title>
+</head>
+<body th:replace="layout :: layout(content)">
+<main>
+  <h2 class="text-xl font-bold mb-4">管理者コード設定</h2>
+  <form method="post" action="/admin/code/update" class="space-y-4">
+    <div>
+      <label for="adminCode" class="block font-semibold">新しい管理者コード：</label>
+      <input type="text" id="adminCode" name="adminCode" class="border px-2 py-1 rounded w-full" required>
+    </div>
+    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">更新</button>
+  </form>
+</main>
+</body>
 </html>
