@@ -15,12 +15,12 @@ repositories {
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
+    implementation 'mysql:mysql-connector-java:8.0.33' // ← これを追加！
 
-    // HttpSession用のServlet API（ここが重要！）
+    // HttpSession用のServlet API
     compileOnly 'javax.servlet:javax.servlet-api:4.0.1'
 
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
-
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
 
