@@ -1,0 +1,47 @@
+<!-- layout.html -->
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title th:replace="~{::title}">DazBones ホームページ</title>
+  <script src="https://snapwidget.com/js/snapwidget.js"></script>
+  <script>
+    function toggleDarkMode() {
+      document.documentElement.classList.toggle('dark');
+    }
+  </script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-white text-gray-900 dark:bg-gray-800 dark:text-white" th:fragment="layout(content)">
+<header class="text-center p-6 bg-yellow-100 dark:bg-yellow-700">
+  <h1 class="text-3xl font-bold text-brown-700 dark:text-yellow-200">DazBones 草野球チーム</h1>
+  <p class="text-sm mt-1 text-gray-700 dark:text-gray-300">公式ホームページ</p>
+  <div class="mt-2 text-sm text-gray-800 dark:text-gray-200">
+    <span th:if="${session.role} == 'admin'">[管理者]</span>
+    <span th:if="${session.role} == 'editor'">[ログイン中]</span>
+  </div>
+  <button onclick="toggleDarkMode()" class="mt-3 px-4 py-1 bg-gray-300 dark:bg-gray-600 rounded">
+    🌙 ライト／ダーク切替
+  </button>
+</header>
+
+<nav class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 text-center text-sm mt-4 px-4">
+  <a href="/main" class="bg-yellow-200 rounded py-2">ホーム</a>
+  <a href="/player" class="bg-yellow-200 rounded py-2">選手紹介</a>
+  <a href="/history" class="bg-yellow-200 rounded py-2">活動履歴</a>
+  <a href="/survey" class="bg-yellow-200 rounded py-2" th:if="${session.role} == 'admin' or ${session.role} == 'editor'">アンケート</a>
+  <a href="/gear" class="bg-yellow-200 rounded py-2" th:if="${session.role} == 'admin' or ${session.role} == 'editor'">道具管理</a>
+  <a href="/fee" class="bg-yellow-200 rounded py-2" th:if="${session.role} == 'admin' or ${session.role} == 'editor'">部費管理</a>
+  <a href="/admin/code" class="bg-yellow-200 rounded py-2" th:if="${session.role} == 'admin'">コード設定</a>
+  <a href="/system" class="bg-yellow-200 rounded py-2" th:if="${session.role} == 'admin'">システム設定</a>
+  <a href="/policy" class="bg-yellow-200 rounded py-2">ポリシー</a>
+  <a href="/login" class="bg-yellow-200 rounded py-2">ログイン</a>
+</nav>
+
+<main class="p-4" th:insert="${content}"></main>
+
+<footer class="mt-10 p-4 text-center text-xs text-gray-500 dark:text-gray-400">
+  <p>© 2025 DazBones 草野球チーム | <a href="https://github.com/DazBones89/DazBones" class="underline">DazBones</a></p>
+</footer>
+</body>
+</html>

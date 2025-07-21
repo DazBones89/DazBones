@@ -1,0 +1,42 @@
+<!-- fee.html - 部費管理ページ -->
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <title>部費管理</title>
+</head>
+<body th:replace="layout :: layout(~{::body})">
+
+<section>
+  <h2 class="text-xl font-bold mb-4">部費管理</h2>
+
+  <table class="w-full border text-sm">
+    <thead>
+    <tr class="bg-gray-200">
+      <th class="border px-2 py-1">選手名</th>
+      <th class="border px-2 py-1">支払状況</th>
+      <th class="border px-2 py-1">操作</th>
+    </tr>
+    </thead>
+    <tbody>
+    <!-- サンプルデータ（今後DB連携） -->
+    <tr>
+      <td class="border px-2 py-1">山田 太郎</td>
+      <td class="border px-2 py-1 text-green-600">支払い済み</td>
+      <td class="border px-2 py-1">
+        <button class="bg-red-300 px-2 py-1 rounded">未払いに変更</button>
+      </td>
+    </tr>
+    <tr>
+      <td class="border px-2 py-1">佐藤 次郎</td>
+      <td class="border px-2 py-1 text-red-600">未払い</td>
+      <td class="border px-2 py-1">
+        <button class="bg-green-300 px-2 py-1 rounded">支払い済みに変更</button>
+      </td>
+    </tr>
+    </tbody>
+  </table>
+</section>
+
+</body>
+</html>

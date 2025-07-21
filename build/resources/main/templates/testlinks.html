@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org" th:replace="layout :: layout(~{::section})">
+<section>
+    <h2 class="text-xl font-bold mb-4">ページ確認リンク</h2>
+    <ul class="list-disc pl-6 space-y-1">
+        <li><a th:href="@{/}" class="underline text-blue-600">🏠 メインページ</a></li>
+        <li><a th:href="@{/login}" class="underline text-blue-600">🔑 ログインページ</a></li>
+        <li><a th:href="@{/player}" class="underline text-blue-600">⚾ 選手紹介ページ</a></li>
+        <li><a th:href="@{/history}" class="underline text-blue-600">📚 大会・活動履歴ページ</a></li>
+        <li><a th:href="@{/survey}" class="underline text-blue-600">📅 アンケートページ</a></li>
+        <li><a th:href="@{/gear}" class="underline text-blue-600">🧢 道具管理ページ</a></li>
+        <li><a th:href="@{/fee}" class="underline text-blue-600">💰 部費管理ページ</a></li>
+        <li><a th:href="@{/admin/code}" class="underline text-blue-600">🛠️ 管理者コード設定</a></li>
+        <li><a th:href="@{/system}" class="underline text-blue-600">🔧 システム情報</a></li>
+        <li><a th:href="@{/policy}" class="underline text-blue-600">🔐 プライバシーポリシー</a></li>
+    </ul>
+</section>
+</html>
