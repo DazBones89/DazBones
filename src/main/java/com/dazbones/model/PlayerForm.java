@@ -18,6 +18,8 @@ public class PlayerForm {
     @Size(max = 1000, message = "コメントは1000文字以内で入力してください")
     private String comment;
 
+    private Integer id;
+
     // getter/setter
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
@@ -30,4 +32,7 @@ public class PlayerForm {
 
     public String getComment() { return comment; }
     public void setComment(String comment) { this.comment = comment; }
+
+    public Integer getId() { return id; }
+    public void setId(Integer id) { this.id = id; }
 }

@@ -8,9 +8,7 @@ import jakarta.validation.Valid;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
@@ -41,7 +39,7 @@ public class PlayerController {
         return "playerAdd";
     }
 
-    // 追加処理（バリデーション付き）
+    // 追加処理
     @PostMapping("/player/add")
     public String addPlayer(HttpSession session,
                             @Valid PlayerForm playerForm,
@@ -62,60 +60,67 @@ public class PlayerController {
         p.setNumber(playerForm.getNumber());
         p.setComment(playerForm.getComment());
 
-        // ★photoPath は今回扱わない（画像アップロードは別機能で）
-        // p.setPhotoPath(...);  ←削除
-
         playerService.save(p);
 
         redirectAttributes.addFlashAttribute("successMessage", "選手を登録しました");
         return "redirect:/player";
     }
 
-    // （もし編集機能を作りかけなら）編集画面：とりあえず表示だけ
+    // 編集画面
     @GetMapping("/player/edit/{id}")
-    public String editPage(@PathVariable Integer id, HttpSession session, Model model) {
-        model.addAttribute("session", session);
+    public String editPage(@PathVariable Integer id,
+                           HttpSession session,
+                           Model model,
+                           RedirectAttributes redirectAttributes) {
 
-        Player player = playerService.findById(id);
-        if (player == null) {
+        String role = (String) session.getAttribute("role");
+        if (!"admin".equals(role) && !"editor".equals(role)) {
             return "error/404";
         }
 
+        Player player = playerService.findById(id);
+        if (player == null) {
+            redirectAttributes.addFlashAttribute("successMessage", "対象の選手が見つかりませんでした");
+            return "redirect:/player";
+        }
+
         PlayerForm form = new PlayerForm();
+        form.setId(player.getId());
         form.setName(player.getName());
         form.setPosition(player.getPosition());
         form.setNumber(player.getNumber());
         form.setComment(player.getComment());
 
-        // ★id/photoPath は PlayerForm に無いので触らない
-        // form.setId(...);        ←削除
-        // form.setPhotoPath(...); ←削除
-
+        model.addAttribute("session", session);
         model.addAttribute("playerForm", form);
-        model.addAttribute("playerId", id); // hiddenに入れたい場合用
-        return "playerEdit"; // まだ無ければ後で作成
+
+        return "playerEdit";
     }
 
-    // （もし編集更新を作りかけなら）更新処理：とりあえず保存まで
-    @PostMapping("/player/edit/{id}")
-    public String updatePlayer(@PathVariable Integer id,
-                               HttpSession session,
+    // 更新処理
+    @PostMapping("/player/edit")
+    public String updatePlayer(HttpSession session,
                                @Valid PlayerForm playerForm,
                                BindingResult bindingResult,
                                Model model,
                                RedirectAttributes redirectAttributes) {
 
+        String role = (String) session.getAttribute("role");
+        if (!"admin".equals(role) && !"editor".equals(role)) {
+            return "error/404";
+        }
+
         model.addAttribute("session", session);
 
         if (bindingResult.hasErrors()) {
             model.addAttribute("playerForm", playerForm);
-            model.addAttribute("playerId", id);
             return "playerEdit";
         }
 
-        Player player = playerService.findById(id);
+        Player player = playerService.findById(playerForm.getId());
         if (player == null) {
-            return "error/404";
+            redirectAttributes.addFlashAttribute("successMessage", "対象の選手が見つかりませんでした");
+            return "redirect:/player";
         }
 
         player.setName(playerForm.getName());
@@ -123,12 +128,31 @@ public class PlayerController {
         player.setNumber(playerForm.getNumber());
         player.setComment(playerForm.getComment());
 
-        // ★photoPath は今回扱わない
-        // player.setPhotoPath(...); ←削除
-
         playerService.save(player);
 
         redirectAttributes.addFlashAttribute("successMessage", "選手情報を更新しました");
+        return "redirect:/player";
+    }
+
+    // 削除
+    @PostMapping("/player/delete/{id}")
+    public String deletePlayer(@PathVariable Integer id,
+                               HttpSession session,
+                               RedirectAttributes redirectAttributes) {
+
+        String role = (String) session.getAttribute("role");
+        if (!"admin".equals(role) && !"editor".equals(role)) {
+            return "error/404";
+        }
+
+        if (!playerService.existsById(id)) {
+            redirectAttributes.addFlashAttribute("successMessage", "対象の選手が見つかりませんでした");
+            return "redirect:/player";
+        }
+
+        playerService.deleteById(id);
+        redirectAttributes.addFlashAttribute("successMessage", "選手を削除しました");
+
         return "redirect:/player";
     }
 }

@@ -13,12 +13,6 @@ public class PageController {
         return "main";
     }
 
-    // ログインページ（全ロールOK）
-    @GetMapping("/login")
-    public String loginPage() {
-        return "login";
-    }
-
     // 管理者コード変更ページ（管理者のみ）
     @GetMapping("/admin/code")
     public String adminCodePage(HttpSession session) {

@@ -26,4 +26,12 @@ public class PlayerService {
     public Player findById(Integer id) {
         return playerRepository.findById(id).orElse(null);
     }
+
+    public void deleteById(Integer id) {
+        playerRepository.deleteById(id);
+    }
+
+    public boolean existsById(Integer id) {
+        return playerRepository.existsById(id);
+    }
 }
