@@ -2,10 +2,7 @@ package com.dazbones.controller;
 
 import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
-
-import java.util.List;
 
 @Controller
 public class PageController {
@@ -57,13 +54,8 @@ public class PageController {
         return "history";
     }
 
-    // 選手紹介（全ロールOK）※編集機能は別で制御予定
-    @GetMapping("/player")
-    public String playerPage(Model model) {
-        List<String> players = List.of("山田 太郎", "佐藤 次郎", "鈴木 三郎");
-        model.addAttribute("players", players);
-        return "player";
-    }
+    // ※ /player は PlayerController に移管（DBから取得して表示）
+    // ここには定義しない（URL競合を防ぐ）
 
     // プライバシーポリシー（全ロールOK）
     @GetMapping("/policy")

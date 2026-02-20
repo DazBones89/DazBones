@@ -3,6 +3,10 @@ server:
   servlet:
     session:
       timeout: 60m
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
 
 spring:
   datasource:
@@ -18,3 +22,4 @@ spring:
     properties:
       hibernate:
         format_sql: true
+    open-in-view: false
