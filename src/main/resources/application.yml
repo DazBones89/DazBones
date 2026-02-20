@@ -3,3 +3,18 @@ server:
   servlet:
     session:
       timeout: 60m
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/dazbones_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Tokyo
+    username: dbuser
+    password: dbpass
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
