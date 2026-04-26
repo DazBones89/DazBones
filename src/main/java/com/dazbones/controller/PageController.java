@@ -1,84 +1,110 @@
 package com.dazbones.controller;
 
+import com.dazbones.model.UserSession;
+import com.dazbones.repository.NewsRepository;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+
+import java.time.LocalDateTime;
 
 @Controller
 public class PageController {
 
-    // トップページ（全ロールOK）
+    private final NewsRepository newsRepository;
+
+    public PageController(NewsRepository newsRepository) {
+        this.newsRepository = newsRepository;
+    }
+
     @GetMapping({"/", "/main"})
-    public String homePage() {
+    public String homePage(Model model, HttpSession session) {
+        model.addAttribute("userSession", getUserSession(session));
+        model.addAttribute("newsList", newsRepository.findTop3Published(LocalDateTime.now()));
         return "main";
     }
 
-    // 管理者コード変更ページ（管理者のみ）
-    @GetMapping("/admin/code")
-    public String adminCodePage(HttpSession session) {
-        if (!"admin".equals(session.getAttribute("role"))) {
-            return "error/404";
-        }
-        return "adminCode";
+    @GetMapping("/photo")
+    public String photoPage(Model model, HttpSession session) {
+        model.addAttribute("userSession", getUserSession(session));
+        return "photo";
     }
 
-    // 道具管理ページ（管理者・編集者のみ）
-    @GetMapping("/gear")
-    public String gearPage(HttpSession session) {
-        String role = (String) session.getAttribute("role");
-        if (!"admin".equals(role) && !"editor".equals(role)) {
-            return "error/404";
-        }
-        return "gear";
-    }
-
-    // 部費管理ページ（管理者・編集者のみ）
-    @GetMapping("/fee")
-    public String feePage(HttpSession session) {
-        String role = (String) session.getAttribute("role");
-        if (!"admin".equals(role) && !"editor".equals(role)) {
-            return "error/404";
-        }
-        return "fee";
-    }
-
-    // 大会履歴（全ロールOK）※編集機能は別で制御予定
-    @GetMapping("/history")
-    public String historyPage() {
-        return "history";
-    }
-
-    // ※ /player は PlayerController に移管（DBから取得して表示）
-    // ここには定義しない（URL競合を防ぐ）
-
-    // プライバシーポリシー（全ロールOK）
     @GetMapping("/policy")
-    public String policyPage() {
+    public String policyPage(Model model, HttpSession session) {
+        model.addAttribute("userSession", getUserSession(session));
         return "policy";
     }
 
-    // システム設定確認ページ（管理者のみ）
-    @GetMapping("/system")
-    public String systemInfoPage(HttpSession session) {
-        if (!"admin".equals(session.getAttribute("role"))) {
-            return "error/404";
-        }
-        return "systemInfo";
+    @GetMapping("/history")
+    public String historyPage(Model model, HttpSession session) {
+        model.addAttribute("userSession", getUserSession(session));
+        return "history";
     }
 
-    // アンケートページ（管理者・編集者のみ）
+    @GetMapping("/testlinks")
+    public String testLinksPage(Model model, HttpSession session) {
+        model.addAttribute("userSession", getUserSession(session));
+        return "testlinks";
+    }
+
     @GetMapping("/survey")
-    public String surveyPage(HttpSession session) {
-        String role = (String) session.getAttribute("role");
-        if (!"admin".equals(role) && !"editor".equals(role)) {
+    public String surveyPage(HttpSession session, Model model) {
+        if (!canManage(session)) {
             return "error/404";
         }
+        model.addAttribute("userSession", getUserSession(session));
         return "survey";
     }
 
-    // テストリンク（開発環境限定：ここでは常時表示）
-    @GetMapping("/testlinks")
-    public String testLinksPage() {
-        return "testlinks";
+    @GetMapping("/gear")
+    public String gearPage(HttpSession session, Model model) {
+        if (!canManage(session)) {
+            return "error/404";
+        }
+        model.addAttribute("userSession", getUserSession(session));
+        return "gear";
+    }
+
+    @GetMapping("/fee")
+    public String feePage(HttpSession session, Model model) {
+        if (!canManage(session)) {
+            return "error/404";
+        }
+        model.addAttribute("userSession", getUserSession(session));
+        return "fee";
+    }
+
+    @GetMapping("/system")
+    public String systemInfoPage(HttpSession session, Model model) {
+        if (!isAdmin(session)) {
+            return "error/404";
+        }
+        model.addAttribute("userSession", getUserSession(session));
+        return "systemInfo";
+    }
+
+    @GetMapping("/admin/code")
+    public String adminCodePage(HttpSession session, Model model) {
+        if (!isAdmin(session)) {
+            return "error/404";
+        }
+        model.addAttribute("userSession", getUserSession(session));
+        return "adminCode";
+    }
+
+    private UserSession getUserSession(HttpSession session) {
+        return (UserSession) session.getAttribute("userSession");
+    }
+
+    private boolean isAdmin(HttpSession session) {
+        UserSession user = getUserSession(session);
+        return user != null && user.isAdmin();
+    }
+
+    private boolean canManage(HttpSession session) {
+        UserSession user = getUserSession(session);
+        return user != null && user.canManage();
     }
 }

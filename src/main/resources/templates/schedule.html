@@ -1,0 +1,42 @@
+<section class="px-4 py-6">
+
+    <h1 class="mb-5 text-2xl font-black db-brown">活動予定・試合結果</h1>
+
+    <!-- 予定 -->
+    <h2 class="mb-3 text-lg font-black db-gold">今後の予定</h2>
+
+    <div class="space-y-4">
+        <div th:each="s : ${futureList}"
+             class="rounded-2xl bg-white p-4 shadow-md">
+
+            <p class="text-sm font-bold db-gold"
+               th:text="${s.eventDate}"></p>
+
+            <h2 class="text-lg font-black db-brown"
+                th:text="${s.title}"></h2>
+
+            <p th:if="${s.opponent != null}"
+               th:text="'vs ' + ${s.opponent}"></p>
+
+            <p th:text="${s.location}"></p>
+        </div>
+    </div>
+
+    <!-- 結果 -->
+    <h2 class="mt-8 mb-3 text-lg font-black db-gold">試合結果</h2>
+
+    <div class="space-y-4">
+        <div th:each="s : ${pastList}"
+             class="rounded-2xl bg-white p-4 shadow-md">
+
+            <p class="text-sm font-bold db-gold"
+               th:text="${s.eventDate}"></p>
+
+            <h2 class="text-lg font-black db-brown"
+                th:text="${s.title}"></h2>
+
+            <p th:text="${s.score}"></p>
+        </div>
+    </div>
+
+</section>

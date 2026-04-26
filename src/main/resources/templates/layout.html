@@ -1,118 +1,156 @@
-<!-- layout.html -->
 <!DOCTYPE html>
-<html lang="ja" xmlns:th="http://www.thymeleaf.org">
+<html lang="ja"
+      xmlns:th="http://www.thymeleaf.org"
+      th:fragment="layout(pageTitle, content)">
+
 <head>
     <meta charset="UTF-8">
-    <!-- ★各ページの <title> を差し替える -->
-    <title th:replace="~{::title}">DazBones ホームページ</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:replace="${pageTitle}">DazBones</title>
 
-    <script src="https://snapwidget.com/js/snapwidget.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
 
-    <script>
-        function toggleDarkMode() {
-          document.documentElement.classList.toggle('dark');
+    <style>
+        :root {
+            --db-brown: #3b2416;
+            --db-gold: #c69214;
+            --db-bg: #f8f6f2;
         }
-    </script>
 
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+        body {
+            background: var(--db-bg);
+        }
+
+        .db-safe-bottom {
+            padding-bottom: 88px;
+        }
+
+        .db-brown {
+            color: var(--db-brown);
+        }
+
+        .db-gold {
+            color: var(--db-gold);
+        }
+
+        .db-bg-brown {
+            background-color: var(--db-brown);
+        }
+
+        .db-bg-gold {
+            background-color: var(--db-gold);
+        }
+
+        .db-hero-shadow {
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+        }
+    </style>
 </head>
 
-<body class="bg-white text-gray-900 dark:bg-gray-800 dark:text-white"
-      th:fragment="layout(content)">
+<body class="min-h-screen text-gray-800">
 
-<!-- ===== 共通ヘッダー（ここだけにする）===== -->
-<header class="text-center p-6 bg-yellow-100 dark:bg-yellow-700">
-    <h1 class="text-3xl font-bold dark:text-yellow-200">DazBones 草野球チーム</h1>
-    <p class="text-sm mt-1 text-gray-700 dark:text-gray-300">公式ホームページ</p>
+<div class="mx-auto min-h-screen max-w-[480px] bg-white shadow-xl">
 
-    <!-- ロール表示 -->
-    <div class="mt-2 text-sm text-gray-800 dark:text-gray-200">
-        <span th:if="${session.role} == 'admin'">🔐 管理者</span>
-        <span th:if="${session.role} == 'editor'">✏ 編集者</span>
-    </div>
+    <!-- ヘッダー -->
+    <header class="sticky top-0 z-40 border-b border-gray-100 bg-white/95 backdrop-blur">
+        <div class="flex items-center justify-between px-5 py-4">
 
-    <!-- 操作ボタン（戻る / メイン / ログイン or ログアウト / ダーク切替） -->
-    <div class="mt-3 flex justify-center gap-2 flex-wrap">
+            <a th:href="@{/}" class="text-3xl font-extrabold italic tracking-tight db-brown">
+                DazBones
+            </a>
 
-        <button type="button"
-                onclick="history.back()"
-                class="px-3 py-1 bg-gray-300 dark:bg-gray-600 rounded">
-            ← 戻る
-        </button>
+            <button type="button"
+                    class="flex flex-col items-center gap-1 db-brown"
+                    onclick="document.getElementById('mobileMenu').classList.toggle('hidden')">
+                <span class="text-3xl leading-none">☰</span>
+                <span class="text-xs font-bold">メニュー</span>
+            </button>
+        </div>
 
-        <a href="/main"
-           class="px-3 py-1 bg-yellow-300 rounded">
-            🏠 メイン
-        </a>
+        <!-- ハンバーガーメニュー -->
+        <nav id="mobileMenu" class="hidden border-t border-gray-100 bg-white px-5 py-4">
 
-        <!-- 未ログインならログイン -->
-        <a href="/login"
-           th:if="${session.role} == null"
-           class="px-3 py-1 bg-blue-300 rounded">
-            ログイン
-        </a>
+            <!-- 共通メニュー -->
+            <div class="grid grid-cols-2 gap-3 text-sm font-bold">
+                <a th:href="@{/}" class="rounded-xl border px-4 py-3 text-center">ホーム</a>
+                <a th:href="@{/players}" class="rounded-xl border px-4 py-3 text-center">チーム紹介</a>
+                <a th:href="@{/schedule}" class="rounded-xl border px-4 py-3 text-center">活動予定</a>
+                <a th:href="@{/photo}" class="rounded-xl border px-4 py-3 text-center">写真</a>
+                <a th:href="@{/history}" class="rounded-xl border px-4 py-3 text-center">活動履歴</a>
+                <a th:href="@{/news}" class="rounded-xl border px-4 py-3 text-center">お知らせ</a>
+                <a th:href="@{/policy}" class="rounded-xl border px-4 py-3 text-center">規約・ポリシー</a>
 
-        <!-- ログイン中ならログアウト（/logout は後でControllerで実装） -->
-        <a href="/logout"
-           th:if="${session.role} != null"
-           class="px-3 py-1 bg-red-400 text-white rounded">
-            ログアウト
-        </a>
+                <a th:if="${userSession == null}"
+                   th:href="@{/login}"
+                   class="rounded-xl border px-4 py-3 text-center">
+                    ログイン
+                </a>
 
-        <button type="button"
-                onclick="toggleDarkMode()"
-                class="px-3 py-1 bg-gray-300 dark:bg-gray-600 rounded">
-            🌙 ダーク切替
-        </button>
-    </div>
-</header>
+                <a th:if="${userSession != null}"
+                   th:href="@{/logout}"
+                   class="rounded-xl border px-4 py-3 text-center">
+                    ログアウト
+                </a>
+            </div>
 
-<!-- ===== 共通ナビ（ここだけにする）===== -->
-<nav class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 text-center text-sm mt-4 px-4">
-    <a href="/main" class="bg-yellow-200 rounded py-2">ホーム</a>
-    <a href="/player" class="bg-yellow-200 rounded py-2">選手紹介</a>
-    <a href="/history" class="bg-yellow-200 rounded py-2">活動履歴</a>
+            <!-- 編集者・管理者メニュー -->
+            <div th:if="${userSession != null and userSession.canManage()}" class="mt-5">
+                <p class="mb-2 text-xs font-black db-gold">管理メニュー</p>
 
-    <a href="/survey" class="bg-yellow-200 rounded py-2"
-       th:if="${session.role} == 'admin' or ${session.role} == 'editor'">アンケート</a>
+                <div class="grid grid-cols-2 gap-3 text-sm font-bold">
+                    <a th:href="@{/survey}" class="rounded-xl border px-4 py-3 text-center">アンケート管理</a>
+                    <a th:href="@{/gear}" class="rounded-xl border px-4 py-3 text-center">道具管理</a>
+                    <a th:href="@{/fee}" class="rounded-xl border px-4 py-3 text-center">部費管理</a>
+                    <a th:href="@{/players/add}" class="rounded-xl border px-4 py-3 text-center">選手追加</a>
+                </div>
+            </div>
 
-    <a href="/gear" class="bg-yellow-200 rounded py-2"
-       th:if="${session.role} == 'admin' or ${session.role} == 'editor'">道具管理</a>
+            <!-- 管理者専用メニュー -->
+            <div th:if="${userSession != null and userSession.isAdmin()}" class="mt-5">
+                <p class="mb-2 text-xs font-black db-gold">管理者専用</p>
 
-    <a href="/fee" class="bg-yellow-200 rounded py-2"
-       th:if="${session.role} == 'admin' or ${session.role} == 'editor'">部費管理</a>
+                <div class="grid grid-cols-1 gap-3 text-sm font-bold">
+                    <a th:href="@{/admin/news}" class="rounded-xl border px-4 py-3 text-center">お知らせ管理</a>
+                    <a th:href="@{/admin/upload/group-photo}" class="rounded-xl border px-4 py-3 text-center">集合写真アップロード</a>
+                    <a th:href="@{/admin/code}" class="rounded-xl border px-4 py-3 text-center">管理者コード変更</a>
+                </div>
+            </div>
+        </nav>
+    </header>
 
-    <a href="/admin/code" class="bg-yellow-200 rounded py-2"
-       th:if="${session.role} == 'admin'">コード設定</a>
+    <!-- ページ本文 -->
+    <main class="db-safe-bottom">
+        <th:block th:replace="${content}"></th:block>
+    </main>
 
-    <a href="/system" class="bg-yellow-200 rounded py-2"
-       th:if="${session.role} == 'admin'">システム設定</a>
+    <!-- 下部固定ナビ -->
+    <nav class="fixed bottom-0 left-1/2 z-50 w-full max-w-[480px] -translate-x-1/2 border-t border-gray-200 bg-white/95 backdrop-blur">
+        <div class="grid grid-cols-4 text-xs font-bold">
 
-    <a href="/policy" class="bg-yellow-200 rounded py-2">ポリシー</a>
-</nav>
+            <a th:href="@{/}" class="flex flex-col items-center gap-1 py-3 db-gold">
+                <span class="text-2xl">⌂</span>
+                <span>ホーム</span>
+            </a>
 
-<!-- ★各ページの中身がここに入る -->
+            <a th:href="@{/schedule}" class="flex flex-col items-center gap-1 py-3 text-gray-500">
+                <span class="text-2xl">▣</span>
+                <span>活動予定</span>
+            </a>
 
-<main class="p-4" th:insert="${content}"></main>
+            <a th:href="@{/photo}" class="flex flex-col items-center gap-1 py-3 text-gray-500">
+                <span class="text-2xl">▤</span>
+                <span>写真</span>
+            </a>
 
-<footer class="mt-10 p-4 text-center text-xs text-gray-500 dark:text-gray-400">
-    <p>
-        © 2025 DazBones 草野球チーム |
+            <a th:href="@{/login}" class="flex flex-col items-center gap-1 py-3 text-gray-500">
+                <span class="text-2xl">○</span>
+                <span th:text="${userSession != null ? userSession.displayName : 'ログイン'}">ログイン</span>
+            </a>
 
-        <!-- ログイン済みならリンク -->
-        <a th:if="${session.role} != null"
-           href="https://github.com/DazBones89/DazBones"
-           target="_blank"
-           class="underline text-blue-600 dark:text-blue-300">
-            DazBones
-        </a>
+        </div>
+    </nav>
 
-        <!-- 未ログインならただの文字（非活性） -->
-        <span th:if="${session.role} == null"
-              class="text-gray-400 cursor-not-allowed">
-        DazBones
-    </span>
-    </p>
-</footer>
+</div>
+
 </body>
 </html>

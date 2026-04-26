@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ja"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::title}, ~{::section})}">
+
+<head>
+    <title th:text="${news.title} + ' | DazBones'">お知らせ詳細 | DazBones</title>
+</head>
+
+<body>
+<section class="px-4 py-6">
+
+    <a th:href="@{/news}" class="mb-4 inline-block text-sm font-bold db-gold">
+        ＜ お知らせ一覧へ戻る
+    </a>
+
+    <article class="rounded-2xl bg-white p-5 shadow-md ring-1 ring-gray-100">
+
+        <p class="text-sm font-bold db-gold"
+           th:text="${#temporals.format(news.publishedAt, 'yyyy.MM.dd HH:mm')}">
+            2024.05.12 10:00
+        </p>
+
+        <h1 class="mt-2 text-2xl font-black leading-8 db-brown"
+            th:text="${news.title}">
+            お知らせタイトル
+        </h1>
+
+        <div class="mt-5 whitespace-pre-line text-sm leading-8 text-gray-700"
+             th:text="${news.content}">
+            お知らせ本文
+        </div>
+
+    </article>
+
+</section>
+</body>
+</html>

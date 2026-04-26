@@ -1,61 +1,131 @@
 <!DOCTYPE html>
-<html lang="ja" xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{layout :: layout(~{::body})}">
+<html lang="ja"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::title}, ~{::section})}">
+
+<head>
+    <title>選手編集 | DazBones</title>
+</head>
 
 <body>
+<section class="px-4 py-6">
 
-<section class="mt-4 text-center">
-    <h2 class="text-2xl font-bold mb-4">⚾ 選手編集</h2>
-</section>
+    <a th:href="@{/players}" class="mb-4 inline-block text-sm font-bold db-gold">
+        ＜ 選手一覧へ戻る
+    </a>
 
-<div class="max-w-md mx-auto bg-white dark:bg-gray-700 p-6 rounded shadow">
+    <h1 class="mb-5 text-2xl font-black db-brown">選手編集</h1>
 
-    <form th:action="@{/player/edit}" method="post" th:object="${playerForm}">
+    <form th:action="@{/players/{id}/edit(id=${player.id})}"
+          th:object="${playerForm}"
+          method="post"
+          enctype="multipart/form-data"
+          class="space-y-5 rounded-2xl bg-white p-5 shadow-md ring-1 ring-gray-100">
 
-        <input type="hidden" th:field="*{id}"/>
+        <input type="hidden"
+               th:if="${_csrf != null}"
+               th:name="${_csrf.parameterName}"
+               th:value="${_csrf.token}">
 
-        <div class="mb-4">
-            <label class="block text-sm font-semibold mb-1">名前</label>
-            <input type="text" th:field="*{name}"
-                   class="w-full border rounded px-3 py-2">
-            <p class="text-red-500 text-xs"
-               th:if="${#fields.hasErrors('name')}"
-               th:errors="*{name}"></p>
+        <div>
+            <label class="mb-1 block text-sm font-bold db-brown">名前 必須</label>
+            <input type="text"
+                   th:field="*{name}"
+                   required
+                   class="w-full rounded-xl border px-4 py-3">
         </div>
 
-        <div class="mb-4">
-            <label class="block text-sm font-semibold mb-1">ポジション</label>
-            <input type="text" th:field="*{position}"
-                   class="w-full border rounded px-3 py-2">
+        <div>
+            <label class="mb-1 block text-sm font-bold db-brown">背番号</label>
+            <input type="number"
+                   th:field="*{backNumber}"
+                   min="0"
+                   class="w-full rounded-xl border px-4 py-3">
         </div>
 
-        <div class="mb-4">
-            <label class="block text-sm font-semibold mb-1">背番号</label>
-            <input type="number" th:field="*{number}"
-                   class="w-full border rounded px-3 py-2">
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label class="mb-1 block text-sm font-bold db-brown">投げ</label>
+                <select th:field="*{throwHand}" class="w-full rounded-xl border px-4 py-3">
+                    <option value="">未選択</option>
+                    <option value="右">右</option>
+                    <option value="左">左</option>
+                    <option value="両">両</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="mb-1 block text-sm font-bold db-brown">打ち</label>
+                <select th:field="*{batHand}" class="w-full rounded-xl border px-4 py-3">
+                    <option value="">未選択</option>
+                    <option value="右">右</option>
+                    <option value="左">左</option>
+                    <option value="両">両</option>
+                </select>
+            </div>
         </div>
 
-        <div class="mb-4">
-            <label class="block text-sm font-semibold mb-1">コメント</label>
+        <div>
+            <label class="mb-2 block text-sm font-bold db-brown">ポジション</label>
+            <div class="grid grid-cols-2 gap-2 text-sm font-bold">
+                <label class="rounded-xl border p-3">
+                    <input type="checkbox" th:field="*{positions}" value="投手">
+                    投手
+                </label>
+                <label class="rounded-xl border p-3">
+                    <input type="checkbox" th:field="*{positions}" value="捕手">
+                    捕手
+                </label>
+                <label class="rounded-xl border p-3">
+                    <input type="checkbox" th:field="*{positions}" value="内野手">
+                    内野手
+                </label>
+                <label class="rounded-xl border p-3">
+                    <input type="checkbox" th:field="*{positions}" value="外野手">
+                    外野手
+                </label>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+            <div>
+                <label class="mb-1 block text-sm font-bold db-brown">打席数</label>
+                <input type="number"
+                       th:field="*{atBats}"
+                       min="0"
+                       class="w-full rounded-xl border px-4 py-3">
+            </div>
+
+            <div>
+                <label class="mb-1 block text-sm font-bold db-brown">ヒット数</label>
+                <input type="number"
+                       th:field="*{hits}"
+                       min="0"
+                       class="w-full rounded-xl border px-4 py-3">
+            </div>
+        </div>
+
+        <div>
+            <label class="mb-1 block text-sm font-bold db-brown">コメント</label>
             <textarea th:field="*{comment}"
-                      class="w-full border rounded px-3 py-2"
-                      rows="4"></textarea>
+                      rows="5"
+                      class="w-full rounded-xl border px-4 py-3"></textarea>
         </div>
 
-        <div class="flex justify-between">
-            <button type="submit"
-                    class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-                更新する
-            </button>
-
-            <a th:href="@{/player}"
-               class="bg-gray-400 text-white px-4 py-2 rounded">
-                戻る
-            </a>
+        <div>
+            <label class="mb-1 block text-sm font-bold db-brown">選手画像</label>
+            <input type="file"
+                   name="imageFile"
+                   accept=".jpg,.jpeg,.png,.webp"
+                   class="w-full rounded-xl border px-4 py-3 text-sm">
         </div>
 
+        <button type="submit"
+                class="w-full rounded-xl db-bg-brown px-4 py-3 font-black text-white">
+            更新する
+        </button>
     </form>
-</div>
 
+</section>
 </body>
 </html>

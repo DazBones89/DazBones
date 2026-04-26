@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ja"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::title}, ~{::section})}">
+
+<head>
+    <title>お知らせ編集 | DazBones</title>
+</head>
+
+<body>
+<section class="px-4 py-6">
+
+    <a th:href="@{/admin/news}" class="mb-4 inline-block text-sm font-bold db-gold">
+        ＜ お知らせ管理へ戻る
+    </a>
+
+    <h1 class="mb-5 text-2xl font-black db-brown"
+        th:text="${news.id == null ? 'お知らせ新規作成' : 'お知らせ編集'}">
+        お知らせ編集
+    </h1>
+
+    <form th:action="${news.id == null} ? @{/admin/news} : @{/admin/news/{id}/edit(id=${news.id})}"
+          th:object="${news}"
+          method="post"
+          class="space-y-5 rounded-2xl bg-white p-5 shadow-md ring-1 ring-gray-100">
+
+        <input type="hidden"
+               th:if="${_csrf != null}"
+               th:name="${_csrf.parameterName}"
+               th:value="${_csrf.token}">
+
+        <div>
+            <label class="mb-1 block text-sm font-bold db-brown">タイトル 必須</label>
+            <input type="text"
+                   th:field="*{title}"
+                   required
+                   class="w-full rounded-xl border px-4 py-3">
+        </div>
+
+        <div>
+            <label class="mb-1 block text-sm font-bold db-brown">公開日時 必須</label>
+            <input type="datetime-local"
+                   th:field="*{publishedAt}"
+                   required
+                   class="w-full rounded-xl border px-4 py-3">
+        </div>
+
+        <div>
+            <label class="mb-1 block text-sm font-bold db-brown">本文 必須</label>
+            <textarea th:field="*{content}"
+                      rows="8"
+                      required
+                      class="w-full rounded-xl border px-4 py-3"></textarea>
+        </div>
+
+        <button type="submit"
+                class="w-full rounded-xl db-bg-brown px-4 py-3 font-black text-white">
+            保存する
+        </button>
+    </form>
+
+</section>
+</body>
+</html>

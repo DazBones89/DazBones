@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::body})}">
+<head>
+    <title>集合写真アップロード - DazBones</title>
+</head>
+<body>
+
+<section class="max-w-xl mx-auto mt-6 p-4 bg-white dark:bg-gray-700 rounded shadow">
+    <h2 class="text-xl font-bold mb-4">📷 集合写真アップロード（管理者のみ）</h2>
+
+    <div class="text-sm text-gray-600 dark:text-gray-200 mb-4">
+        ・対応：JPG / PNG / WEBP<br>
+        ・上限：5MB<br>
+        ・アップロード後、トップの集合写真が置き換わります
+    </div>
+
+    <div th:if="${errorMessage}" class="bg-red-100 text-red-800 px-3 py-2 rounded text-sm mb-3"
+         th:text="${errorMessage}"></div>
+
+    <div th:if="${successMessage}" class="bg-green-100 text-green-800 px-3 py-2 rounded text-sm mb-3"
+         th:text="${successMessage}"></div>
+
+    <form method="post" action="/admin/upload/group-photo" enctype="multipart/form-data" class="space-y-3">
+        <input type="file" name="file" accept="image/*"
+               class="w-full text-sm" required>
+
+        <button type="submit"
+                class="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+            アップロードして反映
+        </button>
+    </form>
+
+    <div class="mt-4 text-sm">
+        現在の画像：<br>
+        <img src="/uploads/group-photo.jpg"
+             onerror="this.style.display='none'"
+             class="mt-2 max-w-full rounded border">
+        <p class="text-xs text-gray-500 mt-1">※ まだ未設定の場合は表示されません</p>
+    </div>
+</section>
+
+</body>
+</html>

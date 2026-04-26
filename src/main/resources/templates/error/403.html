@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::body})}">
+<body>
+
+<section class="text-center mt-10">
+    <h2 class="text-3xl font-bold text-orange-500 mb-4">403 Forbidden</h2>
+    <p class="text-gray-700 dark:text-gray-300 mb-6">
+        このページにアクセスする権限がありません。
+    </p>
+
+    <a href="/main"
+       class="px-6 py-2 bg-yellow-400 hover:bg-yellow-500 rounded shadow">
+        メイン画面へ戻る
+    </a>
+</section>
+
+</body>
+</html>
