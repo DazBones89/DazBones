@@ -4,47 +4,45 @@ import com.dazbones.form.PlayerForm;
 import com.dazbones.model.Player;
 import com.dazbones.model.PlayerPosition;
 import com.dazbones.model.UserSession;
-import com.dazbones.repository.PlayerRepository;
+import com.dazbones.service.PlayerService;
 import jakarta.servlet.http.HttpSession;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.IOException;
 import java.nio.file.*;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 @Controller
 public class PlayerController {
 
-    private final PlayerRepository playerRepository;
+    private final PlayerService service;
 
     @Value("${app.upload-dir}")
     private String uploadDir;
 
-    public PlayerController(PlayerRepository playerRepository) {
-        this.playerRepository = playerRepository;
+    public PlayerController(PlayerService service) {
+        this.service = service;
     }
 
     @GetMapping({"/players", "/player"})
-    public String playerList(@RequestParam(value = "sort", required = false, defaultValue = "backNumber") String sort,
-                             HttpSession session,
-                             Model model) {
+    public String list(@RequestParam(value = "sort", required = false, defaultValue = "backNumber") String sort,
+                       HttpSession session,
+                       Model model) {
 
-        UserSession user = getUserSession(session);
+        UserSession user = (UserSession) session.getAttribute("userSession");
 
-        List<Player> players;
-        if (user != null && user.isAdmin()) {
-            players = playerRepository.findAll();
-        } else {
-            players = playerRepository.findActivePlayers();
-        }
+        List<Player> players = (user != null && user.isAdmin())
+                ? service.getAll()
+                : service.getActivePlayers();
 
         model.addAttribute("players", players);
         model.addAttribute("userSession", user);
@@ -60,34 +58,37 @@ public class PlayerController {
         }
 
         model.addAttribute("playerForm", new PlayerForm());
-        model.addAttribute("userSession", getUserSession(session));
+        model.addAttribute("userSession", session.getAttribute("userSession"));
+
         return "playerAdd";
     }
 
     @PostMapping("/players/add")
-    public String addPlayer(@ModelAttribute PlayerForm playerForm,
-                            @RequestParam(value = "imageFile", required = false) MultipartFile imageFile,
-                            HttpSession session,
-                            RedirectAttributes redirectAttributes) {
+    public String add(@Valid @ModelAttribute("playerForm") PlayerForm form,
+                      BindingResult result,
+                      @RequestParam(value = "imageFile", required = false) MultipartFile imageFile,
+                      HttpSession session,
+                      Model model,
+                      RedirectAttributes redirectAttributes) {
 
         if (!canManage(session)) {
             return "error/404";
         }
 
+        if (result.hasErrors()) {
+            model.addAttribute("userSession", session.getAttribute("userSession"));
+            return "playerAdd";
+        }
+
         Player player = new Player();
-        applyFormToPlayer(player, playerForm);
+        applyFormToPlayer(player, form);
 
-        player.setDeleteFlg(0);
-        player.setCreatedAt(LocalDateTime.now());
-        player.setUpdatedAt(LocalDateTime.now());
+        service.save(player);
 
-        Player saved = playerRepository.save(player);
-
-        String imagePath = savePlayerImageIfExists(imageFile, saved.getId(), redirectAttributes);
+        String imagePath = savePlayerImageIfExists(imageFile, player.getId(), redirectAttributes);
         if (imagePath != null) {
-            saved.setImagePath(imagePath);
-            saved.setUpdatedAt(LocalDateTime.now());
-            playerRepository.save(saved);
+            player.setImagePath(imagePath);
+            service.save(player);
         }
 
         return "redirect:/players";
@@ -102,12 +103,81 @@ public class PlayerController {
             return "error/404";
         }
 
-        Player player = playerRepository.findById(id).orElse(null);
+        Player player = service.findById(id);
         if (player == null) {
             return "error/404";
         }
 
+        PlayerForm form = toForm(player);
+
+        model.addAttribute("player", player);
+        model.addAttribute("playerForm", form);
+        model.addAttribute("userSession", session.getAttribute("userSession"));
+
+        return "playerEdit";
+    }
+
+    @PostMapping("/players/{id}/edit")
+    public String update(@PathVariable Long id,
+                         @Valid @ModelAttribute("playerForm") PlayerForm form,
+                         BindingResult result,
+                         @RequestParam(value = "imageFile", required = false) MultipartFile imageFile,
+                         HttpSession session,
+                         Model model,
+                         RedirectAttributes redirectAttributes) {
+
+        if (!canManage(session)) {
+            return "error/404";
+        }
+
+        Player player = service.findById(id);
+        if (player == null) {
+            return "error/404";
+        }
+
+        if (result.hasErrors()) {
+            model.addAttribute("player", player);
+            model.addAttribute("userSession", session.getAttribute("userSession"));
+            return "playerEdit";
+        }
+
+        applyFormToPlayer(player, form);
+
+        String imagePath = savePlayerImageIfExists(imageFile, player.getId(), redirectAttributes);
+        if (imagePath != null) {
+            player.setImagePath(imagePath);
+        }
+
+        service.save(player);
+
+        return "redirect:/players";
+    }
+
+    @PostMapping("/players/{id}/delete")
+    public String delete(@PathVariable Long id, HttpSession session) {
+        if (!canManage(session)) {
+            return "error/404";
+        }
+
+        service.delete(id);
+
+        return "redirect:/players";
+    }
+
+    @PostMapping("/players/{id}/restore")
+    public String restore(@PathVariable Long id, HttpSession session) {
+        if (!isAdmin(session)) {
+            return "error/404";
+        }
+
+        service.restore(id);
+
+        return "redirect:/players";
+    }
+
+    private PlayerForm toForm(Player player) {
         PlayerForm form = new PlayerForm();
+
         form.setName(player.getName());
         form.setBackNumber(player.getBackNumber());
         form.setThrowHand(player.getThrowHand());
@@ -124,84 +194,7 @@ public class PlayerController {
         }
         form.setPositions(positions);
 
-        model.addAttribute("player", player);
-        model.addAttribute("playerForm", form);
-        model.addAttribute("userSession", getUserSession(session));
-
-        return "playerEdit";
-    }
-
-    @PostMapping("/players/{id}/edit")
-    public String updatePlayer(@PathVariable Long id,
-                               @ModelAttribute PlayerForm playerForm,
-                               @RequestParam(value = "imageFile", required = false) MultipartFile imageFile,
-                               HttpSession session,
-                               RedirectAttributes redirectAttributes) {
-
-        if (!canManage(session)) {
-            return "error/404";
-        }
-
-        Player player = playerRepository.findById(id).orElse(null);
-        if (player == null) {
-            return "error/404";
-        }
-
-        applyFormToPlayer(player, playerForm);
-
-        String imagePath = savePlayerImageIfExists(imageFile, player.getId(), redirectAttributes);
-        if (imagePath != null) {
-            player.setImagePath(imagePath);
-        }
-
-        player.setUpdatedAt(LocalDateTime.now());
-        playerRepository.save(player);
-
-        return "redirect:/players";
-    }
-
-    @PostMapping("/players/{id}/delete")
-    public String deletePlayer(@PathVariable Long id,
-                               HttpSession session) {
-
-        if (!canManage(session)) {
-            return "error/404";
-        }
-
-        Player player = playerRepository.findById(id).orElse(null);
-        if (player == null) {
-            return "error/404";
-        }
-
-        player.setDeleteFlg(1);
-        player.setDeletedAt(LocalDateTime.now());
-        player.setUpdatedAt(LocalDateTime.now());
-
-        playerRepository.save(player);
-
-        return "redirect:/players";
-    }
-
-    @PostMapping("/players/{id}/restore")
-    public String restorePlayer(@PathVariable Long id,
-                                HttpSession session) {
-
-        if (!isAdmin(session)) {
-            return "error/404";
-        }
-
-        Player player = playerRepository.findById(id).orElse(null);
-        if (player == null) {
-            return "error/404";
-        }
-
-        player.setDeleteFlg(0);
-        player.setDeletedAt(null);
-        player.setUpdatedAt(LocalDateTime.now());
-
-        playerRepository.save(player);
-
-        return "redirect:/players";
+        return form;
     }
 
     private void applyFormToPlayer(Player player, PlayerForm form) {
@@ -284,17 +277,13 @@ public class PlayerController {
         }
     }
 
-    private UserSession getUserSession(HttpSession session) {
-        return (UserSession) session.getAttribute("userSession");
+    private boolean canManage(HttpSession session) {
+        UserSession user = (UserSession) session.getAttribute("userSession");
+        return user != null && user.canManage();
     }
 
     private boolean isAdmin(HttpSession session) {
-        UserSession user = getUserSession(session);
+        UserSession user = (UserSession) session.getAttribute("userSession");
         return user != null && user.isAdmin();
-    }
-
-    private boolean canManage(HttpSession session) {
-        UserSession user = getUserSession(session);
-        return user != null && user.canManage();
     }
 }

@@ -15,12 +15,12 @@
     </a>
 
     <h1 class="mb-5 text-2xl font-black db-brown"
-        th:text="${news.id == null ? 'お知らせ新規作成' : 'お知らせ編集'}">
+        th:text="${newsForm.id == null ? 'お知らせ新規作成' : 'お知らせ編集'}">
         お知らせ編集
     </h1>
 
-    <form th:action="${news.id == null} ? @{/admin/news} : @{/admin/news/{id}/edit(id=${news.id})}"
-          th:object="${news}"
+    <form th:action="${newsForm.id == null} ? @{/admin/news} : @{/admin/news/{id}/edit(id=${newsForm.id})}"
+          th:object="${newsForm}"
           method="post"
           class="space-y-5 rounded-2xl bg-white p-5 shadow-md ring-1 ring-gray-100">
 
@@ -33,24 +33,33 @@
             <label class="mb-1 block text-sm font-bold db-brown">タイトル 必須</label>
             <input type="text"
                    th:field="*{title}"
-                   required
                    class="w-full rounded-xl border px-4 py-3">
+
+            <div th:if="${#fields.hasErrors('title')}" class="mt-1 text-sm font-bold text-red-500">
+                <span th:errors="*{title}"></span>
+            </div>
         </div>
 
         <div>
             <label class="mb-1 block text-sm font-bold db-brown">公開日時 必須</label>
             <input type="datetime-local"
                    th:field="*{publishedAt}"
-                   required
                    class="w-full rounded-xl border px-4 py-3">
+
+            <div th:if="${#fields.hasErrors('publishedAt')}" class="mt-1 text-sm font-bold text-red-500">
+                <span th:errors="*{publishedAt}"></span>
+            </div>
         </div>
 
         <div>
             <label class="mb-1 block text-sm font-bold db-brown">本文 必須</label>
             <textarea th:field="*{content}"
                       rows="8"
-                      required
                       class="w-full rounded-xl border px-4 py-3"></textarea>
+
+            <div th:if="${#fields.hasErrors('content')}" class="mt-1 text-sm font-bold text-red-500">
+                <span th:errors="*{content}"></span>
+            </div>
         </div>
 
         <button type="submit"

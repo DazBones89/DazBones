@@ -84,6 +84,55 @@
         </div>
     </div>
 
+    <!-- 今日の予定 -->
+    <div class="px-4 pb-6">
+        <div class="overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-gray-100">
+            <div class="flex items-center justify-between border-b border-gray-100 px-4 py-4">
+                <h2 class="flex items-center gap-2 text-xl font-black db-brown">
+                    <span class="db-gold">📅</span>
+                    今日の予定
+                </h2>
+                <a th:href="@{/schedule}" class="text-sm font-bold db-gold">カレンダーを見る ＞</a>
+            </div>
+
+            <div th:if="${todaySchedules != null and !todaySchedules.isEmpty()}"
+                 class="divide-y divide-gray-100">
+
+                <a th:each="s : ${todaySchedules}"
+                   th:href="@{/schedule}"
+                   class="block px-4 py-4">
+
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <p class="text-sm font-bold db-gold"
+                               th:text="${s.startTime != null ? #temporals.format(s.startTime, 'HH:mm') : '時間未定'}">
+                                10:00
+                            </p>
+
+                            <h3 class="mt-1 text-base font-black db-brown"
+                                th:text="${s.title}">
+                                練習試合
+                            </h3>
+
+                            <p th:if="${s.location != null and !#strings.isEmpty(s.location)}"
+                               class="mt-1 text-sm text-gray-600"
+                               th:text="${s.location}">
+                                場所
+                            </p>
+                        </div>
+
+                        <span class="text-gray-400">›</span>
+                    </div>
+                </a>
+            </div>
+
+            <div th:if="${todaySchedules == null or todaySchedules.isEmpty()}"
+                 class="px-4 py-6 text-sm text-gray-500">
+                今日の予定はありません。
+            </div>
+        </div>
+    </div>
+
     <!-- 写真 / Instagram 軽量表示 -->
     <div class="px-4 pb-8">
         <div class="rounded-2xl bg-white p-4 shadow-md ring-1 ring-gray-100">

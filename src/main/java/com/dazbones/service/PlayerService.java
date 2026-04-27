@@ -4,34 +4,56 @@ import com.dazbones.model.Player;
 import com.dazbones.repository.PlayerRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 public class PlayerService {
 
-    private final PlayerRepository playerRepository;
+    private final PlayerRepository repo;
 
-    public PlayerService(PlayerRepository playerRepository) {
-        this.playerRepository = playerRepository;
+    public PlayerService(PlayerRepository repo) {
+        this.repo = repo;
     }
 
-    public List<Player> findAll() {
-        return playerRepository.findAll();
+    public List<Player> getActivePlayers() {
+        return repo.findActivePlayers();
     }
 
-    public Player save(Player player) {
-        return playerRepository.save(player);
+    public List<Player> getAll() {
+        return repo.findAll();
     }
 
-    public Player findById(Integer id) {
-        return playerRepository.findById(id).orElse(null);
+    public Player findById(Long id) {
+        return repo.findById(id).orElse(null);
     }
 
-    public void deleteById(Integer id) {
-        playerRepository.deleteById(id);
+    public void save(Player p) {
+        if (p.getId() == null) {
+            p.setCreatedAt(LocalDateTime.now());
+            p.setDeleteFlg(0);
+        }
+        p.setUpdatedAt(LocalDateTime.now());
+        repo.save(p);
     }
 
-    public boolean existsById(Integer id) {
-        return playerRepository.existsById(id);
+    public void delete(Long id) {
+        Player p = findById(id);
+        if (p != null) {
+            p.setDeleteFlg(1);
+            p.setDeletedAt(LocalDateTime.now());
+            p.setUpdatedAt(LocalDateTime.now());
+            repo.save(p);
+        }
+    }
+
+    public void restore(Long id) {
+        Player p = findById(id);
+        if (p != null) {
+            p.setDeleteFlg(0);
+            p.setDeletedAt(null);
+            p.setUpdatedAt(LocalDateTime.now());
+            repo.save(p);
+        }
     }
 }

@@ -10,11 +10,38 @@ public class PlayerPosition {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String position;
-
+    // 親（Player）
     @ManyToOne
     @JoinColumn(name = "player_id")
     private Player player;
 
-    // getter / setter
+    // ポジション名
+    @Column(name = "position")
+    private String position;
+
+    // ===== Getter / Setter =====
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public Player getPlayer() {
+        return player;
+    }
+
+    public void setPlayer(Player player) {
+        this.player = player;
+    }
+
+    public String getPosition() {
+        return position;
+    }
+
+    public void setPosition(String position) {
+        this.position = position;
+    }
 }

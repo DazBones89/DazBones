@@ -1,42 +1,177 @@
+<!DOCTYPE html>
+<html lang="ja"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::title}, ~{::section})}">
+
+<head>
+    <title>活動予定 | DazBones</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+</head>
+
+<body>
 <section class="px-4 py-6">
 
-    <h1 class="mb-5 text-2xl font-black db-brown">活動予定・試合結果</h1>
-
-    <!-- 予定 -->
-    <h2 class="mb-3 text-lg font-black db-gold">今後の予定</h2>
-
-    <div class="space-y-4">
-        <div th:each="s : ${futureList}"
-             class="rounded-2xl bg-white p-4 shadow-md">
-
-            <p class="text-sm font-bold db-gold"
-               th:text="${s.eventDate}"></p>
-
-            <h2 class="text-lg font-black db-brown"
-                th:text="${s.title}"></h2>
-
-            <p th:if="${s.opponent != null}"
-               th:text="'vs ' + ${s.opponent}"></p>
-
-            <p th:text="${s.location}"></p>
-        </div>
+    <div class="mb-5">
+        <h1 class="text-2xl font-black db-brown">活動予定・試合結果</h1>
+        <p class="mt-1 text-sm text-gray-500">カレンダーから確認できます</p>
     </div>
 
-    <!-- 結果 -->
-    <h2 class="mt-8 mb-3 text-lg font-black db-gold">試合結果</h2>
+    <div class="rounded-2xl bg-white p-3 shadow-md ring-1 ring-gray-100">
+        <div id="calendar"></div>
+    </div>
 
-    <div class="space-y-4">
-        <div th:each="s : ${pastList}"
-             class="rounded-2xl bg-white p-4 shadow-md">
+    <div th:if="${userSession != null and userSession.canManage()}"
+         class="mt-6 text-right">
+        <a th:href="@{/admin/schedules}"
+           class="inline-block rounded-xl db-bg-brown px-4 py-2 text-sm font-bold text-white">
+            活動予定を管理する
+        </a>
+    </div>
 
-            <p class="text-sm font-bold db-gold"
-               th:text="${s.eventDate}"></p>
+    <!-- 詳細モーダル -->
+    <div id="scheduleModal"
+         class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/50 px-4">
 
-            <h2 class="text-lg font-black db-brown"
-                th:text="${s.title}"></h2>
+        <div class="w-full max-w-[420px] rounded-2xl bg-white shadow-xl">
 
-            <p th:text="${s.score}"></p>
+            <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+                <h2 id="modalTitle" class="text-xl font-black db-brown">
+                    活動予定
+                </h2>
+
+                <button type="button"
+                        onclick="closeScheduleModal()"
+                        class="rounded-full bg-gray-100 px-3 py-1 text-xl font-bold text-gray-600">
+                    ×
+                </button>
+            </div>
+
+            <div class="space-y-3 px-5 py-5 text-sm">
+
+                <div>
+                    <p class="font-bold db-gold">日付</p>
+                    <p id="modalDate" class="mt-1 text-gray-700"></p>
+                </div>
+
+                <div id="modalTimeBlock">
+                    <p class="font-bold db-gold">時間</p>
+                    <p id="modalTime" class="mt-1 text-gray-700"></p>
+                </div>
+
+                <div id="modalTypeBlock">
+                    <p class="font-bold db-gold">種別</p>
+                    <p id="modalType" class="mt-1 text-gray-700"></p>
+                </div>
+
+                <div id="modalOpponentBlock">
+                    <p class="font-bold db-gold">対戦相手</p>
+                    <p id="modalOpponent" class="mt-1 text-gray-700"></p>
+                </div>
+
+                <div id="modalLocationBlock">
+                    <p class="font-bold db-gold">場所</p>
+                    <p id="modalLocation" class="mt-1 text-gray-700"></p>
+                </div>
+
+                <div id="modalResultBlock">
+                    <p class="font-bold db-gold">結果</p>
+                    <p id="modalResult" class="mt-1 text-gray-700"></p>
+                </div>
+
+                <div id="modalScoreBlock">
+                    <p class="font-bold db-gold">スコア</p>
+                    <p id="modalScore" class="mt-1 text-gray-700"></p>
+                </div>
+
+                <div id="modalCommentBlock">
+                    <p class="font-bold db-gold">コメント</p>
+                    <p id="modalComment" class="mt-1 whitespace-pre-line leading-7 text-gray-700"></p>
+                </div>
+
+            </div>
+
+            <div class="border-t border-gray-100 px-5 py-4">
+                <button type="button"
+                        onclick="closeScheduleModal()"
+                        class="w-full rounded-xl db-bg-brown px-4 py-3 font-bold text-white">
+                    閉じる
+                </button>
+            </div>
         </div>
     </div>
 
 </section>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+
+        const calendarEl = document.getElementById('calendar');
+
+        const calendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'ja',
+            height: 'auto',
+
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: ''
+            },
+
+            events: '/api/schedules',
+
+            eventClick: function (info) {
+                openScheduleModal(info.event);
+            }
+        });
+
+        calendar.render();
+    });
+
+    function openScheduleModal(event) {
+        const props = event.extendedProps || {};
+
+        document.getElementById('modalTitle').textContent = event.title || '';
+        document.getElementById('modalDate').textContent = props.eventDate || event.startStr || '';
+
+        const startTime = props.startTime || '';
+        const endTime = props.endTime || '';
+        const timeText = startTime && endTime ? startTime + ' ～ ' + endTime : startTime || endTime;
+        setBlock('modalTimeBlock', 'modalTime', timeText);
+
+        setBlock('modalTypeBlock', 'modalType', props.eventType);
+        setBlock('modalOpponentBlock', 'modalOpponent', props.opponent ? 'vs ' + props.opponent : '');
+        setBlock('modalLocationBlock', 'modalLocation', props.location);
+        setBlock('modalResultBlock', 'modalResult', props.resultStatus);
+        setBlock('modalScoreBlock', 'modalScore', props.score);
+        setBlock('modalCommentBlock', 'modalComment', props.comment);
+
+        const modal = document.getElementById('scheduleModal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+
+    function closeScheduleModal() {
+        const modal = document.getElementById('scheduleModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    function setBlock(blockId, textId, value) {
+        const block = document.getElementById(blockId);
+        const text = document.getElementById(textId);
+
+        if (value === null || value === undefined || value === '') {
+            block.classList.add('hidden');
+            text.textContent = '';
+        } else {
+            block.classList.remove('hidden');
+            text.textContent = value;
+        }
+    }
+</script>
+
+</body>
+</html>

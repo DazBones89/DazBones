@@ -27,19 +27,23 @@
                th:name="${_csrf.parameterName}"
                th:value="${_csrf.token}">
 
+        <div th:if="${errorMessage}" class="rounded-xl bg-red-50 p-3 text-sm font-bold text-red-600">
+            <span th:text="${errorMessage}"></span>
+        </div>
+
         <div>
             <label class="mb-1 block text-sm font-bold db-brown">名前 必須</label>
-            <input type="text"
-                   th:field="*{name}"
-                   required
-                   class="w-full rounded-xl border px-4 py-3">
+            <input type="text" th:field="*{name}"
+                   class="w-full rounded-xl border px-4 py-3"
+                   th:classappend="${#fields.hasErrors('name')} ? ' border-red-500 bg-red-50' : ''">
+            <div th:if="${#fields.hasErrors('name')}" class="mt-1 text-sm font-bold text-red-500">
+                <span th:errors="*{name}"></span>
+            </div>
         </div>
 
         <div>
             <label class="mb-1 block text-sm font-bold db-brown">背番号</label>
-            <input type="number"
-                   th:field="*{backNumber}"
-                   min="0"
+            <input type="number" th:field="*{backNumber}" min="0"
                    class="w-full rounded-xl border px-4 py-3">
         </div>
 
@@ -68,56 +72,46 @@
         <div>
             <label class="mb-2 block text-sm font-bold db-brown">ポジション</label>
             <div class="grid grid-cols-2 gap-2 text-sm font-bold">
-                <label class="rounded-xl border p-3">
-                    <input type="checkbox" th:field="*{positions}" value="投手">
-                    投手
-                </label>
-                <label class="rounded-xl border p-3">
-                    <input type="checkbox" th:field="*{positions}" value="捕手">
-                    捕手
-                </label>
-                <label class="rounded-xl border p-3">
-                    <input type="checkbox" th:field="*{positions}" value="内野手">
-                    内野手
-                </label>
-                <label class="rounded-xl border p-3">
-                    <input type="checkbox" th:field="*{positions}" value="外野手">
-                    外野手
-                </label>
+                <label class="rounded-xl border p-3"><input type="checkbox" th:field="*{positions}" value="投手"> 投手</label>
+                <label class="rounded-xl border p-3"><input type="checkbox" th:field="*{positions}" value="捕手"> 捕手</label>
+                <label class="rounded-xl border p-3"><input type="checkbox" th:field="*{positions}" value="内野手"> 内野手</label>
+                <label class="rounded-xl border p-3"><input type="checkbox" th:field="*{positions}" value="外野手"> 外野手</label>
             </div>
         </div>
 
         <div class="grid grid-cols-2 gap-3">
             <div>
                 <label class="mb-1 block text-sm font-bold db-brown">打席数</label>
-                <input type="number"
-                       th:field="*{atBats}"
-                       min="0"
-                       class="w-full rounded-xl border px-4 py-3">
+                <input type="number" th:field="*{atBats}" min="0"
+                       class="w-full rounded-xl border px-4 py-3"
+                       th:classappend="${#fields.hasErrors('atBats')} ? ' border-red-500 bg-red-50' : ''">
+                <div th:if="${#fields.hasErrors('atBats')}" class="mt-1 text-sm font-bold text-red-500">
+                    <span th:errors="*{atBats}"></span>
+                </div>
             </div>
 
             <div>
                 <label class="mb-1 block text-sm font-bold db-brown">ヒット数</label>
-                <input type="number"
-                       th:field="*{hits}"
-                       min="0"
-                       class="w-full rounded-xl border px-4 py-3">
+                <input type="number" th:field="*{hits}" min="0"
+                       class="w-full rounded-xl border px-4 py-3"
+                       th:classappend="${#fields.hasErrors('hits')} ? ' border-red-500 bg-red-50' : ''">
+                <div th:if="${#fields.hasErrors('hits')}" class="mt-1 text-sm font-bold text-red-500">
+                    <span th:errors="*{hits}"></span>
+                </div>
             </div>
         </div>
 
         <div>
             <label class="mb-1 block text-sm font-bold db-brown">コメント</label>
-            <textarea th:field="*{comment}"
-                      rows="5"
+            <textarea th:field="*{comment}" rows="5"
                       class="w-full rounded-xl border px-4 py-3"></textarea>
         </div>
 
         <div>
             <label class="mb-1 block text-sm font-bold db-brown">選手画像</label>
-            <input type="file"
-                   name="imageFile"
-                   accept=".jpg,.jpeg,.png,.webp"
+            <input type="file" name="imageFile" accept=".jpg,.jpeg,.png,.webp"
                    class="w-full rounded-xl border px-4 py-3 text-sm">
+            <p class="mt-1 text-xs text-gray-500">5MB以内 / JPG・PNG・WEBP対応</p>
         </div>
 
         <button type="submit"
