@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ja"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::title}, ~{::section})}">
+
+<head>
+    <title>回答者管理 | DazBones</title>
+</head>
+
+<body>
+<section class="px-4 py-6">
+
+    <a th:href="@{/survey}" class="mb-4 inline-block text-sm font-bold db-gold">
+        ＜ アンケートへ戻る
+    </a>
+
+    <h1 class="mb-5 text-2xl font-black db-brown">回答者管理</h1>
+
+    <div th:if="${successMessage}" class="mb-4 rounded-xl bg-green-50 p-3 text-sm font-bold text-green-700">
+        <span th:text="${successMessage}"></span>
+    </div>
+
+    <div th:if="${errorMessage}" class="mb-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-600">
+        <span th:text="${errorMessage}"></span>
+    </div>
+
+    <form th:action="@{/admin/survey-members}"
+          method="post"
+          class="mb-6 rounded-2xl bg-white p-5 shadow-md ring-1 ring-gray-100">
+
+        <input type="hidden"
+               th:if="${_csrf != null}"
+               th:name="${_csrf.parameterName}"
+               th:value="${_csrf.token}">
+
+        <label class="mb-2 block text-sm font-bold db-brown">回答者名</label>
+
+        <div class="flex gap-2">
+            <input type="text"
+                   name="name"
+                   placeholder="例：山田 太郎"
+                   class="min-w-0 flex-1 rounded-xl border px-4 py-3">
+
+            <button type="submit"
+                    class="rounded-xl db-bg-brown px-4 py-3 text-sm font-black text-white">
+                追加
+            </button>
+        </div>
+
+        <p class="mt-2 text-xs text-gray-500">
+            同名登録はできません。重複する場合は「山田 太郎 #18」のように識別できる名前で登録してください。
+        </p>
+    </form>
+
+    <div class="overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-gray-100">
+
+        <div class="border-b border-gray-100 px-4 py-4">
+            <h2 class="text-lg font-black db-brown">登録済み回答者</h2>
+        </div>
+
+        <div th:if="${members == null or members.isEmpty()}" class="px-4 py-6 text-sm text-gray-500">
+            回答者はまだ登録されていません。
+        </div>
+
+        <div th:if="${members != null and !members.isEmpty()}" class="divide-y divide-gray-100">
+            <div th:each="member : ${members}" class="flex items-center justify-between gap-3 px-4 py-4">
+
+                <div>
+                    <p class="text-base font-bold db-brown" th:text="${member.name}">
+                        山田 太郎
+                    </p>
+                    <p class="mt-1 text-xs text-gray-400"
+                       th:text="${member.createdAt != null ? #temporals.format(member.createdAt, 'yyyy.MM.dd') : ''}">
+                        2026.04.01
+                    </p>
+                </div>
+
+                <form th:if="${userSession != null and userSession.isAdmin()}"
+                      th:action="@{/admin/survey-members/{id}/delete(id=${member.id})}"
+                      method="post"
+                      onsubmit="return confirm('この回答者を削除しますか？');">
+
+                    <input type="hidden"
+                           th:if="${_csrf != null}"
+                           th:name="${_csrf.parameterName}"
+                           th:value="${_csrf.token}">
+
+                    <button type="submit"
+                            class="rounded-xl bg-red-500 px-3 py-2 text-xs font-bold text-white">
+                        削除
+                    </button>
+                </form>
+
+            </div>
+        </div>
+    </div>
+
+</section>
+</body>
+</html>

@@ -1,38 +1,416 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="ja"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::title}, ~{::section})}">
+
 <head>
+    <title>アンケート | DazBones</title>
 
     <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
 
-</head>
-<body>
+    <style>
+        .fc-daygrid-day.survey-auto {
+            background-color: #fde68a !important;
+        }
 
-<div id="calendar"></div>
+        .fc-daygrid-day.survey-manual {
+            background-color: #7dd3fc !important;
+        }
+
+        .fc-daygrid-day.survey-mixed {
+            background: linear-gradient(
+                to bottom,
+                #fde68a 0%,
+                #fde68a 50%,
+                #7dd3fc 50%,
+                #7dd3fc 100%
+            ) !important;
+        }
+
+        .fc-daygrid-day.survey-none {
+            background-color: #ffffff !important;
+        }
+
+        .fc .fc-daygrid-day-number {
+            font-weight: 700;
+            color: #3b2416;
+        }
+
+        .fc-event {
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 4px;
+        }
+    </style>
+</head>
+
+<body>
+<section class="px-4 py-6">
+
+    <div class="mb-5">
+        <h1 class="text-2xl font-black db-brown">アンケート</h1>
+        <p class="mt-1 text-sm text-gray-500">出欠状況をカレンダーで確認できます</p>
+    </div>
+
+    <div class="mb-4 grid grid-cols-2 gap-2 text-sm font-bold">
+        <a th:href="@{/admin/survey-members}" class="rounded-xl border px-4 py-3 text-center">
+            回答者管理
+        </a>
+
+        <a th:if="${userSession != null and userSession.isAdmin()}"
+           th:href="@{/admin/holidays}"
+           class="rounded-xl border px-4 py-3 text-center">
+            祝日管理
+        </a>
+    </div>
+
+    <div class="mb-4 rounded-2xl bg-white p-4 shadow-md ring-1 ring-gray-100">
+        <p class="mb-2 text-sm font-bold db-brown">現在の回答者</p>
+
+        <select id="globalMemberSelect" class="w-full rounded-xl border px-4 py-3">
+            <option value="">未選択</option>
+            <option th:each="member : ${members}"
+                    th:value="${member.id}"
+                    th:text="${member.name}"
+                    th:selected="${selectedSurveyMemberId != null and selectedSurveyMemberId == member.id}">
+                山田 太郎
+            </option>
+        </select>
+
+        <p class="mt-2 text-xs text-gray-500">
+            一度選択して回答すると、ログアウトまで回答者が保持されます。
+        </p>
+    </div>
+
+    <div class="mb-4 grid grid-cols-2 gap-2 text-xs font-bold">
+        <div class="rounded-xl bg-yellow-200 px-3 py-2 text-center">土日祝：黄色</div>
+        <div class="rounded-xl bg-sky-300 px-3 py-2 text-center">手動：水色</div>
+        <div class="col-span-2 rounded-xl px-3 py-2 text-center"
+             style="background: linear-gradient(to bottom, #fde68a 0%, #fde68a 50%, #7dd3fc 50%, #7dd3fc 100%);">
+            土日祝＋手動：上半分黄色／下半分水色
+        </div>
+    </div>
+
+    <div class="rounded-2xl bg-white p-3 shadow-md ring-1 ring-gray-100">
+        <div id="surveyCalendar"></div>
+    </div>
+
+    <div id="surveyModal"
+         class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/50 px-4">
+
+        <div class="max-h-[90vh] w-full max-w-[430px] overflow-y-auto rounded-2xl bg-white shadow-xl">
+
+            <div class="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+                <div>
+                    <h2 id="modalDateTitle" class="text-xl font-black db-brown">日付</h2>
+                    <p id="modalSurveyTitle" class="text-xs text-gray-500">参加アンケート</p>
+                </div>
+
+                <button type="button"
+                        onclick="closeSurveyModal()"
+                        class="rounded-full bg-gray-100 px-3 py-1 text-xl font-bold text-gray-600">
+                    ×
+                </button>
+            </div>
+
+            <div class="space-y-4 px-5 py-5">
+
+                <div id="myAnswerBox" class="hidden rounded-xl bg-green-50 p-3 text-sm font-bold text-green-700">
+                    現在の回答：<span id="myAnswerStatus"></span>
+                </div>
+
+                <div class="rounded-xl bg-gray-50 p-4">
+                    <h3 class="mb-2 text-sm font-black db-gold">回答する</h3>
+
+                    <input type="hidden" id="answerDate">
+
+                    <label class="mb-1 block text-xs font-bold db-brown">名前</label>
+                    <select id="answerMemberId" class="mb-3 w-full rounded-xl border px-4 py-3">
+                        <option value="">選択してください</option>
+                        <option th:each="member : ${members}"
+                                th:value="${member.id}"
+                                th:text="${member.name}">
+                            山田 太郎
+                        </option>
+                    </select>
+
+                    <label class="mb-1 block text-xs font-bold db-brown">回答</label>
+                    <select id="answerStatus" class="mb-3 w-full rounded-xl border px-4 py-3">
+                        <option value="参加">参加</option>
+                        <option value="不参加">不参加</option>
+                        <option value="未定">未定</option>
+                    </select>
+
+                    <label class="mb-1 block text-xs font-bold db-brown">コメント</label>
+                    <textarea id="answerComment"
+                              rows="3"
+                              class="mb-3 w-full rounded-xl border px-4 py-3"
+                              placeholder="任意"></textarea>
+
+                    <button type="button"
+                            onclick="submitSurveyAnswer()"
+                            class="w-full rounded-xl db-bg-brown px-4 py-3 font-black text-white">
+                        回答を保存
+                    </button>
+                </div>
+
+                <div class="rounded-xl bg-sky-50 p-4">
+                    <h3 class="mb-2 text-sm font-black text-sky-700">手動アンケートを追加</h3>
+                    <input type="text"
+                           id="manualSurveyTitle"
+                           placeholder="例：追加アンケート"
+                           class="mb-3 w-full rounded-xl border px-4 py-3">
+
+                    <button type="button"
+                            onclick="createManualSurvey()"
+                            class="w-full rounded-xl bg-sky-500 px-4 py-3 font-black text-white">
+                        この日付に追加
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="rounded-xl bg-green-50 p-3">
+                        <h3 class="mb-2 text-sm font-black text-green-700">参加</h3>
+                        <ul id="joinList" class="space-y-1 text-sm text-gray-700"></ul>
+                    </div>
+
+                    <div class="rounded-xl bg-red-50 p-3">
+                        <h3 class="mb-2 text-sm font-black text-red-700">不参加</h3>
+                        <ul id="absentList" class="space-y-1 text-sm text-gray-700"></ul>
+                    </div>
+
+                    <div class="rounded-xl bg-yellow-50 p-3">
+                        <h3 class="mb-2 text-sm font-black text-yellow-700">未定</h3>
+                        <ul id="undecidedList" class="space-y-1 text-sm text-gray-700"></ul>
+                    </div>
+
+                    <div class="rounded-xl bg-gray-50 p-3">
+                        <h3 class="mb-2 text-sm font-black text-gray-700">未回答</h3>
+                        <ul id="noAnswerList" class="space-y-1 text-sm text-gray-700"></ul>
+                    </div>
+                </div>
+
+                <button type="button"
+                        onclick="closeSurveyModal()"
+                        class="w-full rounded-xl border px-4 py-3 font-bold">
+                    閉じる
+                </button>
+            </div>
+        </div>
+    </div>
+
+</section>
+
+<script th:inline="javascript">
+    const selectedSurveyMemberIdFromSession = /*[[${selectedSurveyMemberId}]]*/ null;
+    const csrfParameterName = /*[[${_csrf != null ? _csrf.parameterName : ''}]]*/ '';
+    const csrfToken = /*[[${_csrf != null ? _csrf.token : ''}]]*/ '';
+</script>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
+    let surveyCalendar = null;
 
-        const calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+    document.addEventListener('DOMContentLoaded', function () {
+        const calendarEl = document.getElementById('surveyCalendar');
+
+        surveyCalendar = new FullCalendar.Calendar(calendarEl, {
             initialView: 'dayGridMonth',
             locale: 'ja',
-
-            events: '/api/survey',
-
+            height: 'auto',
+            headerToolbar: {
+                left: 'prev,next today',
+                center: 'title',
+                right: ''
+            },
+            events: '/api/survey/events',
+            datesSet: function(info) {
+                applySurveyDayBackgrounds(info.startStr, info.endStr);
+            },
             dateClick: function(info) {
-                const name = prompt("名前IDを入力");
-                const status = prompt("参加 / 不参加 / 未定");
-
-                fetch('/survey/answer', {
-                    method: 'POST',
-                    headers: {'Content-Type':'application/x-www-form-urlencoded'},
-                    body: 'date='+info.dateStr+'&memberId='+name+'&status='+status
-                }).then(()=>location.reload());
+                openSurveyModal(info.dateStr);
+            },
+            eventClick: function(info) {
+                openSurveyModal(info.event.startStr);
             }
         });
 
-        calendar.render();
+        surveyCalendar.render();
+
+        if (selectedSurveyMemberIdFromSession !== null) {
+            document.getElementById('globalMemberSelect').value = selectedSurveyMemberIdFromSession;
+        }
     });
+
+    function applySurveyDayBackgrounds(start, end) {
+        fetch('/api/survey/day-types?start=' + encodeURIComponent(start) + '&end=' + encodeURIComponent(end))
+            .then(response => response.json())
+            .then(dayTypes => {
+                document.querySelectorAll('.fc-daygrid-day').forEach(cell => {
+                    cell.classList.remove('survey-auto', 'survey-manual', 'survey-mixed', 'survey-none');
+                    const date = cell.getAttribute('data-date');
+                    const type = dayTypes[date] || 'none';
+                    cell.classList.add('survey-' + type);
+                });
+            });
+    }
+
+    function openSurveyModal(date) {
+        document.getElementById('answerDate').value = date;
+        document.getElementById('modalDateTitle').textContent = date;
+
+        const globalMemberId = document.getElementById('globalMemberSelect').value;
+        if (globalMemberId) {
+            document.getElementById('answerMemberId').value = globalMemberId;
+        }
+
+        loadSurveyDetail(date);
+    }
+
+    function loadSurveyDetail(date) {
+        const memberId = document.getElementById('answerMemberId').value;
+        let url = '/api/survey/detail?date=' + encodeURIComponent(date);
+        if (memberId) {
+            url += '&memberId=' + encodeURIComponent(memberId);
+        }
+
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('modalSurveyTitle').textContent = data.title || '参加アンケート';
+
+                renderNameList('joinList', data['参加']);
+                renderNameList('absentList', data['不参加']);
+                renderNameList('undecidedList', data['未定']);
+                renderNameList('noAnswerList', data['未回答']);
+
+                if (data.myStatus) {
+                    document.getElementById('myAnswerBox').classList.remove('hidden');
+                    document.getElementById('myAnswerStatus').textContent = data.myStatus;
+                    document.getElementById('answerStatus').value = data.myStatus;
+                    document.getElementById('answerComment').value = data.myComment || '';
+                } else {
+                    document.getElementById('myAnswerBox').classList.add('hidden');
+                    document.getElementById('myAnswerStatus').textContent = '';
+                    document.getElementById('answerComment').value = '';
+                }
+
+                const modal = document.getElementById('surveyModal');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+            });
+    }
+
+    function closeSurveyModal() {
+        const modal = document.getElementById('surveyModal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    function renderNameList(elementId, names) {
+        const ul = document.getElementById(elementId);
+        ul.innerHTML = '';
+
+        if (!names || names.length === 0) {
+            const li = document.createElement('li');
+            li.textContent = 'なし';
+            li.className = 'text-gray-400';
+            ul.appendChild(li);
+            return;
+        }
+
+        names.forEach(name => {
+            const li = document.createElement('li');
+            li.textContent = '・' + name;
+            ul.appendChild(li);
+        });
+    }
+
+    function submitSurveyAnswer() {
+        const date = document.getElementById('answerDate').value;
+        const memberId = document.getElementById('answerMemberId').value;
+        const status = document.getElementById('answerStatus').value;
+        const comment = document.getElementById('answerComment').value;
+
+        if (!memberId) {
+            alert('名前を選択してください');
+            return;
+        }
+
+        const params = new URLSearchParams();
+        params.append('date', date);
+        params.append('memberId', memberId);
+        params.append('status', status);
+        params.append('comment', comment);
+
+        if (csrfParameterName && csrfToken) {
+            params.append(csrfParameterName, csrfToken);
+        }
+
+        fetch('/survey/answer', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: params
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    alert(data.message || '保存に失敗しました');
+                    return;
+                }
+
+                document.getElementById('globalMemberSelect').value = memberId;
+
+                if (surveyCalendar) {
+                    surveyCalendar.refetchEvents();
+                }
+
+                applySurveyDayBackgrounds(
+                    surveyCalendar.view.activeStart.toISOString().split('T')[0],
+                    surveyCalendar.view.activeEnd.toISOString().split('T')[0]
+                );
+
+                loadSurveyDetail(date);
+            });
+    }
+
+    function createManualSurvey() {
+        const date = document.getElementById('answerDate').value;
+        const title = document.getElementById('manualSurveyTitle').value || '追加アンケート';
+
+        const params = new URLSearchParams();
+        params.append('date', date);
+        params.append('title', title);
+
+        if (csrfParameterName && csrfToken) {
+            params.append(csrfParameterName, csrfToken);
+        }
+
+        fetch('/survey/manual', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: params
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    alert(data.message || '作成に失敗しました');
+                    return;
+                }
+
+                if (surveyCalendar) {
+                    surveyCalendar.refetchEvents();
+                }
+
+                applySurveyDayBackgrounds(
+                    surveyCalendar.view.activeStart.toISOString().split('T')[0],
+                    surveyCalendar.view.activeEnd.toISOString().split('T')[0]
+                );
+
+                loadSurveyDetail(date);
+            });
+    }
 </script>
 
 </body>

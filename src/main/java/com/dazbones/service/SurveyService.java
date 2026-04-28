@@ -1,93 +1,173 @@
 package com.dazbones.service;
 
-import com.dazbones.model.*;
-import com.dazbones.repository.*;
+import com.dazbones.model.SurveyAnswer;
+import com.dazbones.model.SurveyEvent;
+import com.dazbones.model.SurveyMember;
+import com.dazbones.repository.SurveyAnswerRepository;
+import com.dazbones.repository.SurveyEventRepository;
+import com.dazbones.repository.SurveyMemberRepository;
 import org.springframework.stereotype.Service;
 
-import java.time.*;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.util.*;
 
 @Service
 public class SurveyService {
 
-    private final SurveyEventRepository eventRepo;
-    private final SurveyAnswerRepository answerRepo;
-    private final SurveyMemberRepository memberRepo;
+    private final SurveyEventRepository eventRepository;
+    private final SurveyAnswerRepository answerRepository;
+    private final SurveyMemberRepository memberRepository;
+    private final HolidayService holidayService;
 
-    public SurveyService(SurveyEventRepository eventRepo,
-                         SurveyAnswerRepository answerRepo,
-                         SurveyMemberRepository memberRepo) {
-        this.eventRepo = eventRepo;
-        this.answerRepo = answerRepo;
-        this.memberRepo = memberRepo;
+    public SurveyService(SurveyEventRepository eventRepository,
+                         SurveyAnswerRepository answerRepository,
+                         SurveyMemberRepository memberRepository,
+                         HolidayService holidayService) {
+        this.eventRepository = eventRepository;
+        this.answerRepository = answerRepository;
+        this.memberRepository = memberRepository;
+        this.holidayService = holidayService;
     }
 
-    // 土日判定
-    private boolean isWeekend(LocalDate date) {
-        DayOfWeek d = date.getDayOfWeek();
-        return d == DayOfWeek.SATURDAY || d == DayOfWeek.SUNDAY;
+    public List<SurveyMember> getActiveMembers() {
+        return memberRepository.findByDeleteFlgOrderByNameAsc(0);
     }
 
-    public SurveyEvent getOrCreate(LocalDate date, boolean manual) {
-
-        return eventRepo.findByTargetDate(date)
+    public SurveyEvent getOrCreateEvent(LocalDate date, boolean manualFlg) {
+        return eventRepository.findByTargetDate(date)
                 .orElseGet(() -> {
-                    SurveyEvent e = new SurveyEvent();
-                    e.setTargetDate(date);
-                    e.setManualFlg(manual);
-                    return eventRepo.save(e);
+                    SurveyEvent event = new SurveyEvent();
+                    event.setTargetDate(date);
+                    event.setTitle("参加アンケート");
+                    event.setManualFlg(manualFlg);
+                    return eventRepository.save(event);
                 });
     }
 
-    public void answer(LocalDate date, Long memberId, String status) {
+    public void createManualSurvey(LocalDate date, String title) {
+        SurveyEvent event = getOrCreateEvent(date, true);
+        event.setManualFlg(true);
+        event.setTitle(title == null || title.isBlank() ? "追加アンケート" : title.trim());
+        eventRepository.save(event);
+    }
 
-        SurveyEvent e = getOrCreate(date, false);
+    public void saveAnswer(LocalDate date, Long memberId, String status, String comment) {
+        SurveyEvent event = getOrCreateEvent(date, false);
 
-        SurveyAnswer a = answerRepo
-                .findBySurveyEventIdAndSurveyMemberId(e.getId(), memberId)
+        SurveyAnswer answer = answerRepository
+                .findBySurveyEventIdAndSurveyMemberId(event.getId(), memberId)
                 .orElse(new SurveyAnswer());
 
-        a.setSurveyEventId(e.getId());
-        a.setSurveyMemberId(memberId);
-        a.setAnswerStatus(status);
+        answer.setSurveyEventId(event.getId());
+        answer.setSurveyMemberId(memberId);
+        answer.setAnswerStatus(status);
+        answer.setComment(comment);
 
-        answerRepo.save(a);
+        answerRepository.save(answer);
     }
 
     public Map<String, Object> getSummary(LocalDate date) {
+        SurveyEvent event = eventRepository.findByTargetDate(date).orElse(null);
+        List<SurveyMember> members = memberRepository.findByDeleteFlgOrderByNameAsc(0);
 
-        SurveyEvent e = eventRepo.findByTargetDate(date).orElse(null);
+        boolean autoTarget = isWeekend(date) || holidayService.isHoliday(date);
+        boolean manual = event != null && Boolean.TRUE.equals(event.getManualFlg());
 
-        Map<String, Object> res = new HashMap<>();
+        long join = 0;
+        long absent = 0;
+        long undecided = 0;
+        long answered = 0;
 
-        boolean isWeekend = isWeekend(date);
-        boolean hasManual = (e != null && e.getManualFlg());
-
-        long total = memberRepo.findByDeleteFlg(0).size();
-
-        if (e == null) {
-            res.put("参加", 0);
-            res.put("不参加", 0);
-            res.put("未定", 0);
-            res.put("未回答", total);
-        } else {
-            long join = answerRepo.countBySurveyEventIdAndAnswerStatus(e.getId(),"参加");
-            long ng = answerRepo.countBySurveyEventIdAndAnswerStatus(e.getId(),"不参加");
-            long pending = answerRepo.countBySurveyEventIdAndAnswerStatus(e.getId(),"未定");
-            long answered = answerRepo.countBySurveyEventId(e.getId());
-
-            res.put("参加", join);
-            res.put("不参加", ng);
-            res.put("未定", pending);
-            res.put("未回答", total - answered);
+        if (event != null) {
+            join = answerRepository.countBySurveyEventIdAndAnswerStatus(event.getId(), "参加");
+            absent = answerRepository.countBySurveyEventIdAndAnswerStatus(event.getId(), "不参加");
+            undecided = answerRepository.countBySurveyEventIdAndAnswerStatus(event.getId(), "未定");
+            answered = answerRepository.countBySurveyEventId(event.getId());
         }
 
-        // 色判定
-        if (isWeekend && hasManual) res.put("type","mixed");
-        else if (isWeekend) res.put("type","auto");
-        else if (hasManual) res.put("type","manual");
-        else res.put("type","none");
+        long noAnswer = members.size() - answered;
 
-        return res;
+        Map<String, Object> result = new HashMap<>();
+        result.put("title", event != null ? event.getTitle() : (autoTarget ? "参加アンケート" : ""));
+        result.put("参加", join);
+        result.put("不参加", absent);
+        result.put("未定", undecided);
+        result.put("未回答", noAnswer);
+
+        if (autoTarget && manual) {
+            result.put("type", "mixed");
+        } else if (autoTarget) {
+            result.put("type", "auto");
+        } else if (manual) {
+            result.put("type", "manual");
+        } else {
+            result.put("type", "none");
+        }
+
+        return result;
+    }
+
+    public Map<String, Object> getDetail(LocalDate date, Long selectedMemberId) {
+        SurveyEvent event = eventRepository.findByTargetDate(date).orElse(null);
+        List<SurveyMember> members = memberRepository.findByDeleteFlgOrderByNameAsc(0);
+
+        List<String> joinList = new ArrayList<>();
+        List<String> absentList = new ArrayList<>();
+        List<String> undecidedList = new ArrayList<>();
+        List<String> noAnswerList = new ArrayList<>();
+
+        String myStatus = "";
+        String myComment = "";
+
+        Map<Long, SurveyAnswer> answerMap = new HashMap<>();
+
+        if (event != null) {
+            List<SurveyAnswer> answers = answerRepository.findBySurveyEventId(event.getId());
+            for (SurveyAnswer answer : answers) {
+                answerMap.put(answer.getSurveyMemberId(), answer);
+            }
+        }
+
+        for (SurveyMember member : members) {
+            SurveyAnswer answer = answerMap.get(member.getId());
+
+            if (answer == null) {
+                noAnswerList.add(member.getName());
+                continue;
+            }
+
+            if (selectedMemberId != null && selectedMemberId.equals(member.getId())) {
+                myStatus = answer.getAnswerStatus();
+                myComment = answer.getComment() == null ? "" : answer.getComment();
+            }
+
+            if ("参加".equals(answer.getAnswerStatus())) {
+                joinList.add(member.getName());
+            } else if ("不参加".equals(answer.getAnswerStatus())) {
+                absentList.add(member.getName());
+            } else if ("未定".equals(answer.getAnswerStatus())) {
+                undecidedList.add(member.getName());
+            } else {
+                noAnswerList.add(member.getName());
+            }
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("date", date.toString());
+        result.put("title", event != null ? event.getTitle() : "参加アンケート");
+        result.put("参加", joinList);
+        result.put("不参加", absentList);
+        result.put("未定", undecidedList);
+        result.put("未回答", noAnswerList);
+        result.put("myStatus", myStatus);
+        result.put("myComment", myComment);
+
+        return result;
+    }
+
+    private boolean isWeekend(LocalDate date) {
+        DayOfWeek day = date.getDayOfWeek();
+        return day == DayOfWeek.SATURDAY || day == DayOfWeek.SUNDAY;
     }
 }

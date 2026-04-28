@@ -1,21 +1,22 @@
 package com.dazbones.model;
 
 import jakarta.persistence.*;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "survey_members")
-public class SurveyMember {
+@Table(name = "holidays")
+public class Holiday {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false)
-    private String name;
+    @Column(name = "holiday_date", nullable = false, unique = true)
+    private LocalDate holidayDate;
 
-    @Column(name = "delete_flg")
-    private Integer deleteFlg = 0;
+    @Column(nullable = false)
+    private String name;
 
     @Column(name = "created_at")
     private LocalDateTime createdAt;
@@ -27,9 +28,6 @@ public class SurveyMember {
     void preInsert() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
-        if (deleteFlg == null) {
-            deleteFlg = 0;
-        }
     }
 
     @PreUpdate
@@ -41,12 +39,12 @@ public class SurveyMember {
         return id;
     }
 
-    public String getName() {
-        return name;
+    public LocalDate getHolidayDate() {
+        return holidayDate;
     }
 
-    public Integer getDeleteFlg() {
-        return deleteFlg;
+    public String getName() {
+        return name;
     }
 
     public LocalDateTime getCreatedAt() {
@@ -61,12 +59,12 @@ public class SurveyMember {
         this.id = id;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public void setHolidayDate(LocalDate holidayDate) {
+        this.holidayDate = holidayDate;
     }
 
-    public void setDeleteFlg(Integer deleteFlg) {
-        this.deleteFlg = deleteFlg;
+    public void setName(String name) {
+        this.name = name;
     }
 
     public void setCreatedAt(LocalDateTime createdAt) {
