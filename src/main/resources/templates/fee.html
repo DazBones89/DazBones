@@ -12,26 +12,39 @@
 
     <div class="mb-5">
         <h1 class="text-2xl font-black db-brown">部費管理</h1>
-        <p class="mt-1 text-sm text-gray-500">選手ごとの支払い状況を管理します</p>
+        <p class="mt-1 text-sm text-gray-500">選手ごとの支払い状況・金額・メモを管理します</p>
     </div>
 
+    <!-- 集計 -->
     <div class="mb-5 rounded-2xl bg-white p-4 shadow-md ring-1 ring-gray-100">
+        <h2 class="mb-3 text-lg font-black db-brown">支払い状況</h2>
+
         <div class="grid grid-cols-2 gap-3 text-center">
             <div class="rounded-xl bg-green-50 p-3">
                 <p class="text-xs font-bold text-green-700">支払い済み</p>
-                <p class="mt-1 text-2xl font-black text-green-700"
-                   th:text="${#lists.size(players.?[feeMap[#this.id] != null and feeMap[#this.id].paidFlg == 1])}">
-                    0
+                <p class="mt-1 text-3xl font-black text-green-700" th:text="${paidCount}">0</p>
+                <p class="mt-1 text-xs text-green-700"
+                   th:text="${#numbers.formatInteger(paidAmount, 0, 'COMMA')} + '円'">
+                    0円
                 </p>
             </div>
 
             <div class="rounded-xl bg-red-50 p-3">
                 <p class="text-xs font-bold text-red-700">未払い</p>
-                <p class="mt-1 text-2xl font-black text-red-700"
-                   th:text="${#lists.size(players.?[feeMap[#this.id] == null or feeMap[#this.id].paidFlg == 0])}">
-                    0
+                <p class="mt-1 text-3xl font-black text-red-700" th:text="${unpaidCount}">0</p>
+                <p class="mt-1 text-xs text-red-700"
+                   th:text="${#numbers.formatInteger(unpaidAmount, 0, 'COMMA')} + '円'">
+                    0円
                 </p>
             </div>
+        </div>
+
+        <div class="mt-3 rounded-xl bg-gray-50 p-3 text-center">
+            <p class="text-xs font-bold text-gray-500">登録金額合計</p>
+            <p class="mt-1 text-xl font-black db-brown"
+               th:text="${#numbers.formatInteger(totalAmount, 0, 'COMMA')} + '円'">
+                0円
+            </p>
         </div>
     </div>
 
@@ -40,7 +53,9 @@
         選手が登録されていません。
     </div>
 
-    <div class="space-y-4" th:if="${players != null}">
+    <!-- 選手別カード -->
+    <div class="space-y-4" th:if="${players != null and !players.isEmpty()}">
+
         <form th:each="player : ${players}"
               th:action="@{/fee/update}"
               method="post"
@@ -53,19 +68,20 @@
 
             <input type="hidden" name="playerId" th:value="${player.id}">
 
-            <div class="mb-3 flex items-start justify-between gap-3">
+            <div class="mb-4 flex items-start justify-between gap-3">
                 <div>
                     <p class="text-sm font-black db-gold"
                        th:text="${player.backNumber != null ? '#' + player.backNumber : '背番号なし'}">
                         #18
                     </p>
+
                     <h2 class="mt-1 text-xl font-black db-brown"
                         th:text="${player.name}">
                         山田 太郎
                     </h2>
                 </div>
 
-                <div class="rounded-full px-3 py-1 text-xs font-black"
+                <div class="shrink-0 rounded-full px-3 py-1 text-xs font-black"
                      th:classappend="${feeMap[player.id] != null and feeMap[player.id].paidFlg == 1} ? ' bg-green-100 text-green-700' : ' bg-red-100 text-red-700'"
                      th:text="${feeMap[player.id] != null and feeMap[player.id].paidFlg == 1 ? '支払い済み' : '未払い'}">
                     未払い
@@ -74,7 +90,6 @@
 
             <div class="mb-3">
                 <label class="mb-1 block text-sm font-bold db-brown">支払い状況</label>
-
                 <select name="paidFlg" class="w-full rounded-xl border px-4 py-3">
                     <option value="0"
                             th:selected="${feeMap[player.id] == null or feeMap[player.id].paidFlg == 0}">
@@ -89,17 +104,21 @@
 
             <div class="mb-3">
                 <label class="mb-1 block text-sm font-bold db-brown">金額</label>
-                <input type="number"
-                       name="amount"
-                       min="0"
-                       th:value="${feeMap[player.id] != null ? feeMap[player.id].amount : 0}"
-                       class="w-full rounded-xl border px-4 py-3">
+                <div class="flex items-center gap-2">
+                    <input type="number"
+                           name="amount"
+                           min="0"
+                           th:value="${feeMap[player.id] != null ? feeMap[player.id].amount : 0}"
+                           class="min-w-0 flex-1 rounded-xl border px-4 py-3">
+                    <span class="text-sm font-bold text-gray-500">円</span>
+                </div>
             </div>
 
             <div class="mb-4">
                 <label class="mb-1 block text-sm font-bold db-brown">コメント</label>
                 <textarea name="comment"
                           rows="3"
+                          placeholder="支払い予定日・補足など"
                           class="w-full rounded-xl border px-4 py-3"
                           th:text="${feeMap[player.id] != null ? feeMap[player.id].comment : ''}"></textarea>
             </div>
@@ -109,6 +128,7 @@
                 更新する
             </button>
         </form>
+
     </div>
 
 </section>

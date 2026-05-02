@@ -26,8 +26,37 @@
         </div>
     </div>
 
+    <!-- ダッシュボード -->
+    <div class="px-4 py-5">
+        <div class="grid grid-cols-2 gap-3">
+
+            <a th:href="@{/fee}"
+               th:if="${userSession != null and userSession.canManage()}"
+               class="rounded-2xl bg-white p-4 shadow-md ring-1 ring-gray-100">
+                <p class="text-xs font-black text-red-600">未払い人数</p>
+                <p class="mt-1 text-3xl font-black db-brown"
+                   th:text="${unpaidCount}">
+                    0
+                </p>
+                <p class="mt-1 text-xs text-gray-500">部費管理へ</p>
+            </a>
+
+            <a th:href="@{/survey}"
+               th:if="${userSession != null and userSession.canManage()}"
+               class="rounded-2xl bg-white p-4 shadow-md ring-1 ring-gray-100">
+                <p class="text-xs font-black text-yellow-600">本日の未回答</p>
+                <p class="mt-1 text-3xl font-black db-brown"
+                   th:text="${todayNoAnswerCount}">
+                    0
+                </p>
+                <p class="mt-1 text-xs text-gray-500">アンケートへ</p>
+            </a>
+
+        </div>
+    </div>
+
     <!-- 主要カード -->
-    <div class="px-4 py-6">
+    <div class="px-4 pb-6">
         <div class="grid grid-cols-4 gap-3">
             <a th:href="@{/players}" class="rounded-2xl bg-white p-3 text-center shadow-md ring-1 ring-gray-100">
                 <div class="text-3xl">⚾</div>
@@ -48,39 +77,6 @@
                 <div class="text-3xl">📷</div>
                 <div class="mt-2 text-xs font-black db-brown">写真</div>
             </a>
-        </div>
-    </div>
-
-    <!-- お知らせ -->
-    <div class="px-4 pb-6">
-        <div class="overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-gray-100">
-            <div class="flex items-center justify-between border-b border-gray-100 px-4 py-4">
-                <h2 class="flex items-center gap-2 text-xl font-black db-brown">
-                    <span class="db-gold">📣</span>
-                    お知らせ
-                </h2>
-                <a th:href="@{/news}" class="text-sm font-bold db-gold">一覧を見る ＞</a>
-            </div>
-
-            <div class="divide-y divide-gray-100" th:if="${newsList != null and !newsList.isEmpty()}">
-                <a th:each="news : ${newsList}"
-                   th:href="@{/news/{id}(id=${news.id})}"
-                   class="flex items-center gap-3 px-4 py-4">
-                    <time class="w-24 shrink-0 text-sm font-bold db-gold"
-                          th:text="${#temporals.format(news.publishedAt, 'yyyy.MM.dd')}">
-                        2024.05.12
-                    </time>
-                    <p class="flex-1 text-sm font-bold text-gray-800"
-                       th:text="${news.title}">
-                        お知らせタイトル
-                    </p>
-                    <span class="text-gray-400">›</span>
-                </a>
-            </div>
-
-            <div th:if="${newsList == null or newsList.isEmpty()}" class="px-4 py-6 text-sm text-gray-500">
-                現在お知らせはありません。
-            </div>
         </div>
     </div>
 
@@ -133,7 +129,40 @@
         </div>
     </div>
 
-    <!-- 写真 / Instagram 軽量表示 -->
+    <!-- お知らせ -->
+    <div class="px-4 pb-6">
+        <div class="overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-gray-100">
+            <div class="flex items-center justify-between border-b border-gray-100 px-4 py-4">
+                <h2 class="flex items-center gap-2 text-xl font-black db-brown">
+                    <span class="db-gold">📣</span>
+                    お知らせ
+                </h2>
+                <a th:href="@{/news}" class="text-sm font-bold db-gold">一覧を見る ＞</a>
+            </div>
+
+            <div class="divide-y divide-gray-100" th:if="${newsList != null and !newsList.isEmpty()}">
+                <a th:each="news : ${newsList}"
+                   th:href="@{/news/{id}(id=${news.id})}"
+                   class="flex items-center gap-3 px-4 py-4">
+                    <time class="w-24 shrink-0 text-sm font-bold db-gold"
+                          th:text="${#temporals.format(news.publishedAt, 'yyyy.MM.dd')}">
+                        2024.05.12
+                    </time>
+                    <p class="flex-1 text-sm font-bold text-gray-800"
+                       th:text="${news.title}">
+                        お知らせタイトル
+                    </p>
+                    <span class="text-gray-400">›</span>
+                </a>
+            </div>
+
+            <div th:if="${newsList == null or newsList.isEmpty()}" class="px-4 py-6 text-sm text-gray-500">
+                現在お知らせはありません。
+            </div>
+        </div>
+    </div>
+
+    <!-- 写真 -->
     <div class="px-4 pb-8">
         <div class="rounded-2xl bg-white p-4 shadow-md ring-1 ring-gray-100">
             <div class="mb-4 flex items-center justify-between">

@@ -1,20 +1,42 @@
 <!DOCTYPE html>
-<html lang="ja" xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{layout :: layout(~{::body})}">
+<html lang="ja"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::title}, ~{::section})}">
+
+<head>
+    <title>500 | DazBones</title>
+</head>
+
 <body>
+<section class="px-4 py-10">
 
-<section class="text-center mt-10">
-    <h2 class="text-3xl font-bold text-red-600 mb-4">500 Internal Server Error</h2>
-    <p class="text-gray-700 dark:text-gray-300 mb-6">
-        システムエラーが発生しました。
-        時間をおいて再度お試しください。
-    </p>
+    <div class="rounded-2xl bg-white p-6 text-center shadow-md ring-1 ring-gray-100">
+        <div class="text-6xl">🛠️</div>
 
-    <a href="/main"
-       class="px-6 py-2 bg-yellow-400 hover:bg-yellow-500 rounded shadow">
-        メイン画面へ戻る
-    </a>
+        <h1 class="mt-4 text-3xl font-black db-brown">500</h1>
+
+        <p class="mt-2 text-lg font-bold text-gray-700">
+            システムエラーが発生しました
+        </p>
+
+        <p class="mt-4 text-sm leading-7 text-gray-500">
+            処理中にエラーが発生しました。<br>
+            時間をおいて再度お試しください。
+        </p>
+
+        <div th:if="${message}" class="mt-5 rounded-xl bg-gray-50 p-3 text-left text-xs text-gray-500">
+            <p class="font-bold">エラー内容</p>
+            <p class="mt-1 break-all" th:text="${message}">error message</p>
+        </div>
+
+        <div class="mt-6">
+            <a th:href="@{/}"
+               class="block rounded-xl db-bg-brown px-4 py-3 font-black text-white">
+                トップへ戻る
+            </a>
+        </div>
+    </div>
+
 </section>
-
 </body>
 </html>

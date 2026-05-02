@@ -10,7 +10,9 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @Controller
 public class FeeController {
@@ -33,14 +35,40 @@ public class FeeController {
         feeService.createMissingFeeRowsForActivePlayers();
 
         List<Player> players = playerService.getActivePlayers();
-        Map<Long, Fee> feeMap = new HashMap<>();
 
+        Map<Long, Fee> feeMap = new HashMap<>();
         for (Fee fee : feeService.findAll()) {
             feeMap.put(fee.getPlayerId(), fee);
         }
 
+        long paidCount = 0;
+        long unpaidCount = 0;
+        int totalAmount = 0;
+        int paidAmount = 0;
+        int unpaidAmount = 0;
+
+        for (Player player : players) {
+            Fee fee = feeMap.get(player.getId());
+
+            int amount = fee != null && fee.getAmount() != null ? fee.getAmount() : 0;
+            totalAmount += amount;
+
+            if (fee != null && fee.getPaidFlg() != null && fee.getPaidFlg() == 1) {
+                paidCount++;
+                paidAmount += amount;
+            } else {
+                unpaidCount++;
+                unpaidAmount += amount;
+            }
+        }
+
         model.addAttribute("players", players);
         model.addAttribute("feeMap", feeMap);
+        model.addAttribute("paidCount", paidCount);
+        model.addAttribute("unpaidCount", unpaidCount);
+        model.addAttribute("totalAmount", totalAmount);
+        model.addAttribute("paidAmount", paidAmount);
+        model.addAttribute("unpaidAmount", unpaidAmount);
         model.addAttribute("userSession", session.getAttribute("userSession"));
 
         return "fee";

@@ -108,6 +108,22 @@ public class SurveyService {
         return result;
     }
 
+    public long countTodayNoAnswer() {
+        Map<String, Object> summary = getSummary(LocalDate.now());
+        String type = (String) summary.get("type");
+
+        if ("none".equals(type)) {
+            return 0;
+        }
+
+        Object value = summary.get("未回答");
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+
+        return 0;
+    }
+
     public Map<String, Object> getDetail(LocalDate date, Long selectedMemberId) {
         SurveyEvent event = eventRepository.findByTargetDate(date).orElse(null);
         List<SurveyMember> members = memberRepository.findByDeleteFlgOrderByNameAsc(0);

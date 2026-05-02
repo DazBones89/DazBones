@@ -1,28 +1,121 @@
 <!DOCTYPE html>
 <html lang="ja"
-      xmlns:th="http://www.thymeleaf.org">
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::title}, ~{::section})}">
 
+<head>
+    <title>活動予定管理 | DazBones</title>
+</head>
+
+<body>
 <section class="px-4 py-6">
 
-    <div class="flex justify-between mb-5">
-        <h1 class="text-2xl font-black">活動予定管理</h1>
-        <a href="/admin/schedules/new"
-           class="px-4 py-2 bg-black text-white rounded">新規</a>
-    </div>
-
-    <div th:each="s : ${list}" class="mb-3 p-4 bg-white rounded shadow">
-
-        <p th:text="${s.eventDate}"></p>
-        <h2 th:text="${s.title}"></h2>
-
-        <div class="flex gap-2 mt-2">
-            <a th:href="@{/admin/schedules/{id}/edit(id=${s.id})}">編集</a>
-
-            <form th:action="@{/admin/schedules/{id}/delete(id=${s.id})}" method="post">
-                <button type="submit">削除</button>
-            </form>
+    <div class="mb-5 flex items-center justify-between gap-3">
+        <div>
+            <h1 class="text-2xl font-black db-brown">活動予定管理</h1>
+            <p class="mt-1 text-sm text-gray-500">予定・試合結果を登録します</p>
         </div>
 
+        <a th:href="@{/admin/schedules/new}"
+           class="shrink-0 rounded-xl db-bg-brown px-4 py-3 text-sm font-black text-white">
+            新規
+        </a>
+    </div>
+
+    <div th:if="${list == null or list.isEmpty()}"
+         class="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 shadow-md ring-1 ring-gray-100">
+        活動予定はまだ登録されていません。
+    </div>
+
+    <div class="space-y-4" th:if="${list != null and !list.isEmpty()}">
+
+        <article th:each="s : ${list}"
+                 class="rounded-2xl bg-white p-4 shadow-md ring-1 ring-gray-100">
+
+            <div class="mb-3 flex items-start justify-between gap-3">
+                <div>
+                    <p class="text-sm font-black db-gold"
+                       th:text="${#temporals.format(s.eventDate, 'yyyy.MM.dd')}">
+                        2026.05.01
+                    </p>
+
+                    <h2 class="mt-1 text-xl font-black db-brown"
+                        th:text="${s.title}">
+                        練習試合
+                    </h2>
+
+                    <p class="mt-1 text-sm text-gray-600"
+                       th:if="${s.location != null and !#strings.isEmpty(s.location)}"
+                       th:text="${s.location}">
+                        場所
+                    </p>
+                </div>
+
+                <span class="shrink-0 rounded-full bg-gray-100 px-3 py-1 text-xs font-black text-gray-700"
+                      th:text="${s.resultStatus != null and !#strings.isEmpty(s.resultStatus) ? s.resultStatus : '予定'}">
+                    予定
+                </span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 text-sm">
+                <div class="rounded-xl bg-gray-50 p-3">
+                    <p class="text-xs font-bold text-gray-500">種別</p>
+                    <p class="mt-1 font-bold db-brown" th:text="${s.eventType} ?: '未設定'">練習</p>
+                </div>
+
+                <div class="rounded-xl bg-gray-50 p-3">
+                    <p class="text-xs font-bold text-gray-500">時間</p>
+                    <p class="mt-1 font-bold db-brown">
+                        <span th:text="${s.startTime != null ? #temporals.format(s.startTime, 'HH:mm') : '未定'}">未定</span>
+                        <span th:if="${s.endTime != null}"
+                              th:text="' - ' + ${#temporals.format(s.endTime, 'HH:mm')}"></span>
+                    </p>
+                </div>
+            </div>
+
+            <p th:if="${s.opponent != null and !#strings.isEmpty(s.opponent)}"
+               class="mt-3 text-sm text-gray-700"
+               th:text="'対戦相手：' + ${s.opponent}">
+                対戦相手
+            </p>
+
+            <p th:if="${s.score != null and !#strings.isEmpty(s.score)}"
+               class="mt-1 text-sm font-bold text-gray-700"
+               th:text="'スコア：' + ${s.score}">
+                スコア
+            </p>
+
+            <p th:if="${s.comment != null and !#strings.isEmpty(s.comment)}"
+               class="mt-3 whitespace-pre-line rounded-xl bg-gray-50 p-3 text-sm leading-7 text-gray-700"
+               th:text="${s.comment}">
+                コメント
+            </p>
+
+            <div class="mt-4 grid grid-cols-2 gap-2">
+                <a th:href="@{/admin/schedules/{id}/edit(id=${s.id})}"
+                   class="rounded-xl border px-4 py-3 text-center text-sm font-black">
+                    編集
+                </a>
+
+                <form th:action="@{/admin/schedules/{id}/delete(id=${s.id})}"
+                      method="post"
+                      onsubmit="return confirm('この活動予定を削除しますか？');">
+
+                    <input type="hidden"
+                           th:if="${_csrf != null}"
+                           th:name="${_csrf.parameterName}"
+                           th:value="${_csrf.token}">
+
+                    <button type="submit"
+                            class="w-full rounded-xl bg-red-500 px-4 py-3 text-sm font-black text-white">
+                        削除
+                    </button>
+                </form>
+            </div>
+
+        </article>
     </div>
 
 </section>
+</body>
+</html>

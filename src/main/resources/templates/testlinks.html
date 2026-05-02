@@ -1,19 +1,42 @@
 <!DOCTYPE html>
-<html lang="ja" xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{layout :: layout(~{::body})}">
-<section>
-    <h2 class="text-xl font-bold mb-4">ページ確認リンク</h2>
-    <ul class="list-disc pl-6 space-y-1">
-        <li><a th:href="@{/}" class="underline text-blue-600">🏠 メインページ</a></li>
-        <li><a th:href="@{/login}" class="underline text-blue-600">🔑 ログインページ</a></li>
-        <li><a th:href="@{/player}" class="underline text-blue-600">⚾ 選手紹介ページ</a></li>
-        <li><a th:href="@{/history}" class="underline text-blue-600">📚 大会・活動履歴ページ</a></li>
-        <li><a th:href="@{/survey}" class="underline text-blue-600">📅 アンケートページ</a></li>
-        <li><a th:href="@{/gear}" class="underline text-blue-600">🧢 道具管理ページ</a></li>
-        <li><a th:href="@{/fee}" class="underline text-blue-600">💰 部費管理ページ</a></li>
-        <li><a th:href="@{/admin/code}" class="underline text-blue-600">🛠️ 管理者コード設定</a></li>
-        <li><a th:href="@{/system}" class="underline text-blue-600">🔧 システム情報</a></li>
-        <li><a th:href="@{/policy}" class="underline text-blue-600">🔐 プライバシーポリシー</a></li>
-    </ul>
+<html lang="ja"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::title}, ~{::section})}">
+
+<head>
+    <title>テストリンク | DazBones</title>
+</head>
+
+<body>
+<section class="px-4 py-6">
+
+    <div class="mb-5">
+        <h1 class="text-2xl font-black db-brown">テストリンク</h1>
+        <p class="mt-1 text-sm text-gray-500">開発確認用のリンク集です</p>
+    </div>
+
+    <div class="rounded-2xl bg-white p-5 shadow-md ring-1 ring-gray-100">
+
+        <div class="grid grid-cols-2 gap-3 text-sm font-bold">
+
+            <a th:href="@{/}" class="rounded-xl border px-4 py-3 text-center">トップ</a>
+            <a th:href="@{/players}" class="rounded-xl border px-4 py-3 text-center">選手紹介</a>
+            <a th:href="@{/schedule}" class="rounded-xl border px-4 py-3 text-center">活動予定</a>
+            <a th:href="@{/photo}" class="rounded-xl border px-4 py-3 text-center">写真</a>
+            <a th:href="@{/news}" class="rounded-xl border px-4 py-3 text-center">お知らせ</a>
+            <a th:href="@{/survey}" class="rounded-xl border px-4 py-3 text-center">アンケート</a>
+            <a th:href="@{/gear}" class="rounded-xl border px-4 py-3 text-center">道具管理</a>
+            <a th:href="@{/fee}" class="rounded-xl border px-4 py-3 text-center">部費管理</a>
+            <a th:href="@{/policy}" class="rounded-xl border px-4 py-3 text-center">規約</a>
+            <a th:href="@{/login}" class="rounded-xl border px-4 py-3 text-center">ログイン</a>
+
+        </div>
+    </div>
+
+    <div class="mt-5 rounded-2xl bg-yellow-50 p-4 text-sm leading-7 text-yellow-800">
+        このページは開発環境用です。本番ではSpring Profileなどで非表示にする想定です。
+    </div>
+
 </section>
+</body>
 </html>

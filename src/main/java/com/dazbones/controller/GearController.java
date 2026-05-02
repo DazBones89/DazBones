@@ -22,10 +22,12 @@ public class GearController {
 
     @GetMapping("/gear")
     public String list(HttpSession session, Model model) {
-        if (!canManage(session)) return "error/404";
+        if (!canManage(session)) {
+            return "error/404";
+        }
 
         model.addAttribute("gears", gearService.findAll());
-        model.addAttribute("players", playerService.findAll());
+        model.addAttribute("players", playerService.getActivePlayers());
         model.addAttribute("userSession", session.getAttribute("userSession"));
 
         return "gear";
@@ -33,7 +35,9 @@ public class GearController {
 
     @PostMapping("/gear/save")
     public String save(@ModelAttribute Gear gear, HttpSession session) {
-        if (!canManage(session)) return "error/404";
+        if (!canManage(session)) {
+            return "error/404";
+        }
 
         gearService.save(gear);
         return "redirect:/gear";
@@ -41,7 +45,9 @@ public class GearController {
 
     @PostMapping("/gear/delete")
     public String delete(@RequestParam Long id, HttpSession session) {
-        if (!isAdmin(session)) return "error/404";
+        if (!isAdmin(session)) {
+            return "error/404";
+        }
 
         gearService.delete(id);
         return "redirect:/gear";

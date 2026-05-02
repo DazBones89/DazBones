@@ -14,8 +14,6 @@ public class UserSession implements Serializable {
         return role;
     }
 
-    // ===== 権限判定 =====
-
     public boolean isAdmin() {
         return "admin".equals(role);
     }
@@ -25,14 +23,12 @@ public class UserSession implements Serializable {
     }
 
     public boolean isLoggedIn() {
-        return role != null;
+        return role != null && !role.isBlank();
     }
 
     public boolean canManage() {
         return isAdmin() || isEditor();
     }
-
-    // ===== 表示用 =====
 
     public String getDisplayName() {
         if (isAdmin()) {

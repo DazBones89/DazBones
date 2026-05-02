@@ -72,6 +72,7 @@ public class FeeService {
     }
 
     public long countUnpaid() {
+        createMissingFeeRowsForActivePlayers();
         return feeRepository.findByPaidFlgOrderByUpdatedAtDesc(0).size();
     }
 }

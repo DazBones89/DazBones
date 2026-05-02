@@ -1,44 +1,70 @@
 <!DOCTYPE html>
-<html lang="ja" xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{layout :: layout(~{::body})}">
+<html lang="ja"
+      xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout :: layout(~{::title}, ~{::section})}">
+
 <head>
-    <title>集合写真アップロード - DazBones</title>
+    <title>集合写真アップロード | DazBones</title>
 </head>
+
 <body>
+<section class="px-4 py-6">
 
-<section class="max-w-xl mx-auto mt-6 p-4 bg-white dark:bg-gray-700 rounded shadow">
-    <h2 class="text-xl font-bold mb-4">📷 集合写真アップロード（管理者のみ）</h2>
-
-    <div class="text-sm text-gray-600 dark:text-gray-200 mb-4">
-        ・対応：JPG / PNG / WEBP<br>
-        ・上限：5MB<br>
-        ・アップロード後、トップの集合写真が置き換わります
+    <div class="mb-5">
+        <h1 class="text-2xl font-black db-brown">集合写真アップロード</h1>
+        <p class="mt-1 text-sm text-gray-500">トップページの固定画像を差し替えます</p>
     </div>
 
-    <div th:if="${errorMessage}" class="bg-red-100 text-red-800 px-3 py-2 rounded text-sm mb-3"
-         th:text="${errorMessage}"></div>
+    <div class="mb-5 overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-gray-100">
+        <img src="/uploads/images/group-photo.jpg"
+             onerror="this.onerror=null; this.src='/images/default-group-photo.jpg';"
+             alt="現在の集合写真"
+             class="h-64 w-full object-cover">
 
-    <div th:if="${successMessage}" class="bg-green-100 text-green-800 px-3 py-2 rounded text-sm mb-3"
-         th:text="${successMessage}"></div>
-
-    <form method="post" action="/admin/upload/group-photo" enctype="multipart/form-data" class="space-y-3">
-        <input type="file" name="file" accept="image/*"
-               class="w-full text-sm" required>
-
-        <button type="submit"
-                class="w-full px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
-            アップロードして反映
-        </button>
-    </form>
-
-    <div class="mt-4 text-sm">
-        現在の画像：<br>
-        <img src="/uploads/group-photo.jpg"
-             onerror="this.style.display='none'"
-             class="mt-2 max-w-full rounded border">
-        <p class="text-xs text-gray-500 mt-1">※ まだ未設定の場合は表示されません</p>
+        <div class="px-4 py-3 text-sm text-gray-500">
+            現在表示されている画像
+        </div>
     </div>
+
+    <div class="rounded-2xl bg-white p-5 shadow-md ring-1 ring-gray-100">
+
+        <div th:if="${successMessage}" class="mb-4 rounded-xl bg-green-50 p-3 text-sm font-bold text-green-700">
+            <span th:text="${successMessage}"></span>
+        </div>
+
+        <div th:if="${errorMessage}" class="mb-4 rounded-xl bg-red-50 p-3 text-sm font-bold text-red-600">
+            <span th:text="${errorMessage}"></span>
+        </div>
+
+        <form th:action="@{/admin/upload/group-photo}"
+              method="post"
+              enctype="multipart/form-data"
+              class="space-y-5">
+
+            <input type="hidden"
+                   th:if="${_csrf != null}"
+                   th:name="${_csrf.parameterName}"
+                   th:value="${_csrf.token}">
+
+            <div>
+                <label class="mb-1 block text-sm font-bold db-brown">画像ファイル</label>
+                <input type="file"
+                       name="file"
+                       accept=".jpg,.jpeg"
+                       required
+                       class="w-full rounded-xl border px-4 py-3 text-sm">
+                <p class="mt-2 text-xs leading-6 text-gray-500">
+                    JPG/JPEGのみ対応。最大5MBまで。
+                </p>
+            </div>
+
+            <button type="submit"
+                    class="w-full rounded-xl db-bg-brown px-4 py-3 font-black text-white">
+                アップロードする
+            </button>
+        </form>
+    </div>
+
 </section>
-
 </body>
 </html>
