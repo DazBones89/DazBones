@@ -53,6 +53,15 @@ public class SurveyService {
     }
 
     public void saveAnswer(LocalDate date, Long memberId, String status, String comment) {
+        SurveyMember member = memberRepository.findById(memberId).orElse(null);
+        SurveyEvent existing = eventRepository.findByTargetDate(date).orElse(null);
+        boolean target = isWeekend(date) || holidayService.isHoliday(date)
+                || (existing != null && Boolean.TRUE.equals(existing.getManualFlg()));
+        if (member == null || !Integer.valueOf(0).equals(member.getDeleteFlg()) || !target
+                || !List.of("参加", "不参加", "未定").contains(status)
+                || (comment != null && comment.length() > 255)) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST);
+        }
         SurveyEvent event = getOrCreateEvent(date, false);
 
         SurveyAnswer answer = answerRepository
@@ -69,24 +78,14 @@ public class SurveyService {
 
     public Map<String, Object> getSummary(LocalDate date) {
         SurveyEvent event = eventRepository.findByTargetDate(date).orElse(null);
-        List<SurveyMember> members = memberRepository.findByDeleteFlgOrderByNameAsc(0);
-
         boolean autoTarget = isWeekend(date) || holidayService.isHoliday(date);
         boolean manual = event != null && Boolean.TRUE.equals(event.getManualFlg());
 
-        long join = 0;
-        long absent = 0;
-        long undecided = 0;
-        long answered = 0;
-
-        if (event != null) {
-            join = answerRepository.countBySurveyEventIdAndAnswerStatus(event.getId(), "参加");
-            absent = answerRepository.countBySurveyEventIdAndAnswerStatus(event.getId(), "不参加");
-            undecided = answerRepository.countBySurveyEventIdAndAnswerStatus(event.getId(), "未定");
-            answered = answerRepository.countBySurveyEventId(event.getId());
-        }
-
-        long noAnswer = members.size() - answered;
+        Map<String, Object> detail = getDetail(date, null);
+        long join = ((List<?>) detail.get("参加")).size();
+        long absent = ((List<?>) detail.get("不参加")).size();
+        long undecided = ((List<?>) detail.get("未定")).size();
+        long noAnswer = ((List<?>) detail.get("未回答")).size();
 
         Map<String, Object> result = new HashMap<>();
         result.put("title", event != null ? event.getTitle() : (autoTarget ? "参加アンケート" : ""));

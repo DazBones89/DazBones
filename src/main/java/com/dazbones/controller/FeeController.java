@@ -32,8 +32,6 @@ public class FeeController {
             return "error/404";
         }
 
-        feeService.createMissingFeeRowsForActivePlayers();
-
         List<Player> players = playerService.getActivePlayers();
 
         Map<Long, Fee> feeMap = new HashMap<>();

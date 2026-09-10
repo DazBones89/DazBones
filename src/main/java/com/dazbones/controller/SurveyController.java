@@ -41,8 +41,9 @@ public class SurveyController {
             return List.of();
         }
 
-        LocalDate current = LocalDate.parse(start);
-        LocalDate last = LocalDate.parse(end).minusDays(1);
+        com.dazbones.common.CalendarRange range = com.dazbones.common.CalendarRange.parse(start, end);
+        LocalDate current = range.start();
+        LocalDate last = range.end().minusDays(1);
 
         List<Map<String, Object>> result = new ArrayList<>();
 
@@ -78,8 +79,9 @@ public class SurveyController {
             return Map.of();
         }
 
-        LocalDate current = LocalDate.parse(start);
-        LocalDate last = LocalDate.parse(end).minusDays(1);
+        com.dazbones.common.CalendarRange range = com.dazbones.common.CalendarRange.parse(start, end);
+        LocalDate current = range.start();
+        LocalDate last = range.end().minusDays(1);
 
         Map<String, String> result = new HashMap<>();
 

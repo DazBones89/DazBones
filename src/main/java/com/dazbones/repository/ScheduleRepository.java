@@ -13,4 +13,7 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
     List<Schedule> findByEventDateLessThanOrderByEventDateDesc(LocalDate today);
 
     List<Schedule> findByEventDateOrderByStartTimeAsc(LocalDate eventDate);
+
+    List<Schedule> findByEventDateGreaterThanEqualAndEventDateLessThanOrderByEventDateAscStartTimeAsc(
+            LocalDate start, LocalDate end);
 }

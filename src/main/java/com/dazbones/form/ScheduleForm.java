@@ -2,6 +2,9 @@ package com.dazbones.form;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Pattern;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -11,6 +14,7 @@ public class ScheduleForm {
     private Long id;
 
     @NotBlank(message = "タイトルは必須です")
+    @Size(max = 255, message = "タイトルは255文字以内で入力してください")
     private String title;
 
     @NotNull(message = "日付は必須です")
@@ -19,12 +23,23 @@ public class ScheduleForm {
     private LocalTime startTime;
     private LocalTime endTime;
 
+    @Size(max = 255)
     private String location;
+    @Size(max = 255)
     private String opponent;
+    @Pattern(regexp = "|練習|練習試合|公式戦|その他")
     private String eventType;
+    @Pattern(regexp = "|予定|勝利|敗北|引分|中止")
     private String resultStatus;
+    @Size(max = 255)
     private String score;
+    @Size(max = 255)
     private String comment;
+
+    @AssertTrue(message = "終了時間は開始時間より後にしてください")
+    public boolean isTimeRangeValid() {
+        return startTime == null || endTime == null || endTime.isAfter(startTime);
+    }
 
     public Long getId() {
         return id;

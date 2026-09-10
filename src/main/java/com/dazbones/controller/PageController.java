@@ -51,6 +51,12 @@ public class PageController {
         return "history";
     }
 
+    @GetMapping("/photo")
+    public String photo(Model model, HttpSession session) {
+        model.addAttribute("userSession", session.getAttribute("userSession"));
+        return "photo";
+    }
+
     @GetMapping("/testlinks")
     public String testlinks(Model model, HttpSession session) {
         model.addAttribute("userSession", session.getAttribute("userSession"));

@@ -59,10 +59,9 @@
         </form>
 
         <div th:if="${userSession != null}" class="mt-4">
-            <a th:href="@{/logout}"
-               class="block rounded-xl border px-4 py-3 text-center font-black db-brown">
-                ログアウト
-            </a>
+            <form th:action="@{/logout}" method="post">
+                <button type="submit" class="w-full rounded-xl border px-4 py-3 text-center font-black db-brown">ログアウト</button>
+            </form>
         </div>
     </div>
 

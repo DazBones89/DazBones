@@ -1,0 +1,302 @@
+package com.dazbones;
+
+import com.dazbones.model.*;
+import com.dazbones.repository.*;
+import com.dazbones.service.FeeService;
+import com.dazbones.service.SurveyService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.mock.web.MockHttpSession;
+import org.springframework.test.web.servlet.MockMvc;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest(properties = {
+        "spring.config.import=",
+        "spring.datasource.url=jdbc:h2:mem:site-tests;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE",
+        "spring.datasource.driver-class-name=org.h2.Driver",
+        "spring.datasource.username=sa", "spring.datasource.password=",
+        "spring.jpa.hibernate.ddl-auto=create-drop", "spring.jpa.open-in-view=false",
+        "app.auth.admin-code=test-admin-code", "app.auth.editor-code=test-editor-code"
+})
+@AutoConfigureMockMvc
+class SiteIntegrationTest {
+    @Autowired MockMvc mvc;
+    @Autowired PlayerRepository players;
+    @Autowired ScheduleRepository schedules;
+    @Autowired NewsRepository news;
+    @Autowired FeeRepository fees;
+    @Autowired SurveyMemberRepository members;
+    @Autowired SurveyEventRepository events;
+    @Autowired SurveyAnswerRepository answers;
+    @Autowired FeeService feeService;
+    @Autowired SurveyService surveyService;
+
+    @BeforeEach
+    void cleanDatabase() {
+        answers.deleteAll();
+        events.deleteAll();
+        members.deleteAll();
+        fees.deleteAll();
+        players.deleteAll();
+        schedules.deleteAll();
+        news.deleteAll();
+    }
+
+    private MockHttpSession login(String role) throws Exception {
+        return (MockHttpSession) mvc.perform(post("/login").with(csrf())
+                        .param("code", "test-" + role + "-code"))
+                .andExpect(status().is3xxRedirection()).andExpect(redirectedUrl("/main"))
+                .andReturn().getRequest().getSession(false);
+    }
+
+    @Test
+    void directRoleUrlsCannotAuthenticate() throws Exception {
+        for (String role : new String[]{"admin", "editor"}) {
+            MockHttpSession session = new MockHttpSession();
+            mvc.perform(get("/login/" + role).session(session)).andExpect(status().isNotFound());
+            assertThat(session.getAttribute("userSession")).isNull();
+            mvc.perform(get("/admin/news").session(session)).andExpect(redirectedUrl("/login"));
+        }
+    }
+
+    @Test
+    void loginRotatesSessionAndPersistsBothSecurityAndDisplayRole() throws Exception {
+        MockHttpSession previous = new MockHttpSession();
+        previous.setAttribute("selectedSurveyMemberId", 99L);
+        MockHttpSession authenticated = (MockHttpSession) mvc.perform(post("/login").session(previous)
+                        .with(csrf()).param("code", "test-admin-code"))
+                .andExpect(redirectedUrl("/main")).andReturn().getRequest().getSession(false);
+        assertThat(previous.isInvalid()).isTrue();
+        assertThat(authenticated.getId()).isNotEqualTo(previous.getId());
+        assertThat(authenticated.getAttribute("selectedSurveyMemberId")).isNull();
+        assertThat(((UserSession) authenticated.getAttribute("userSession")).isAdmin()).isTrue();
+        mvc.perform(get("/admin/news").session(authenticated)).andExpect(status().isOk())
+                .andExpect(content().string(containsString("お知らせ管理")));
+    }
+
+    @Test
+    void incorrectCodeDoesNotAuthenticate() throws Exception {
+        MockHttpSession session = new MockHttpSession();
+        mvc.perform(post("/login").session(session).with(csrf()).param("code", "wrong"))
+                .andExpect(redirectedUrl("/login"));
+        assertThat(session.getAttribute("userSession")).isNull();
+    }
+
+    @Test
+    void csrfIsRequiredForLoginAndUpdates() throws Exception {
+        mvc.perform(post("/login").param("code", "test-admin-code")).andExpect(status().isForbidden());
+        MockHttpSession session = login("admin");
+        mvc.perform(post("/admin/schedules").session(session)
+                        .param("title", "練習").param("eventDate", "2026-09-12"))
+                .andExpect(status().isForbidden());
+        mvc.perform(post("/admin/schedules").session(session).with(csrf().useInvalidToken())
+                        .param("title", "練習").param("eventDate", "2026-09-12"))
+                .andExpect(status().isForbidden());
+        assertThat(schedules.count()).isZero();
+    }
+
+    @Test
+    void editorCannotUseAdminOperations() throws Exception {
+        MockHttpSession session = login("editor");
+        mvc.perform(get("/admin/news").session(session)).andExpect(status().isForbidden());
+        mvc.perform(post("/gear/delete").session(session).with(csrf()).param("id", "1"))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/admin/schedules").session(session)).andExpect(status().isOk());
+        mvc.perform(get("/admin/survey-members").session(session)).andExpect(status().isOk());
+    }
+
+    @Test
+    void anonymousApiIsUnauthorized() throws Exception {
+        mvc.perform(get("/api/survey/events").param("start", "2026-09-01").param("end", "2026-10-01"))
+                .andExpect(status().isUnauthorized()).andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    void logoutRequiresPostAndInvalidatesSession() throws Exception {
+        MockHttpSession session = login("admin");
+        mvc.perform(get("/logout").session(session));
+        assertThat(session.isInvalid()).isFalse();
+        mvc.perform(post("/logout").session(session).with(csrf())).andExpect(redirectedUrl("/login"));
+        assertThat(session.isInvalid()).isTrue();
+    }
+
+    @Test
+    void loginPageContainsUsableCsrfField() throws Exception {
+        var page = mvc.perform(get("/login")).andExpect(status().isOk()).andReturn();
+        var matcher = java.util.regex.Pattern.compile("name=\"_csrf\"[^>]*value=\"([^\"]+)\"")
+                .matcher(page.getResponse().getContentAsString());
+        assertThat(matcher.find()).isTrue();
+        mvc.perform(post("/login").session((MockHttpSession) page.getRequest().getSession())
+                        .param("_csrf", matcher.group(1)).param("code", "test-editor-code"))
+                .andExpect(redirectedUrl("/main"));
+    }
+
+    @Test
+    void renderedCalendarsIncludeAssetsAndInitialization() throws Exception {
+        for (String path : new String[]{"/schedule", "/survey"}) {
+            mvc.perform(get(path).session(login("editor"))).andExpect(status().isOk())
+                    .andExpect(content().string(containsString("index.global.min.js")))
+                    .andExpect(content().string(containsString("new FullCalendar.Calendar")));
+        }
+        mvc.perform(get("/photo")).andExpect(status().isOk()).andExpect(view().name("photo"));
+    }
+
+    @Test
+    void scheduleCanBeCreatedEditedListedAndDeleted() throws Exception {
+        MockHttpSession session = login("editor");
+        mvc.perform(post("/admin/schedules").session(session).with(csrf()).param("title", "練習")
+                        .param("eventDate", "2026-09-12").param("startTime", "10:00").param("endTime", "12:00"))
+                .andExpect(redirectedUrl("/admin/schedules"));
+        Long id = schedules.findAll().get(0).getId();
+        mvc.perform(get("/admin/schedules/{id}/edit", id).session(session)).andExpect(status().isOk())
+                .andExpect(content().string(containsString("練習")));
+        mvc.perform(post("/admin/schedules/{id}/edit", id).session(session).with(csrf())
+                        .param("title", "練習試合").param("eventDate", "2026-09-12")
+                        .param("location", "球場").param("resultStatus", "勝利").param("score", "5-3"))
+                .andExpect(redirectedUrl("/admin/schedules"));
+        mvc.perform(get("/api/schedules").param("start", "2026-09-01T00:00:00+09:00")
+                        .param("end", "2026-10-01T00:00:00+09:00"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$[0].title").value("練習試合"))
+                .andExpect(jsonPath("$[0].allDay").value(true))
+                .andExpect(jsonPath("$[0].extendedProps.resultStatus").value("勝利"));
+        mvc.perform(post("/admin/schedules/{id}/delete", id).session(session).with(csrf()))
+                .andExpect(redirectedUrl("/admin/schedules"));
+        assertThat(schedules.count()).isZero();
+    }
+
+    @Test
+    void invalidScheduleUpdatePreservesDataAndEditTarget() throws Exception {
+        Schedule s = new Schedule();
+        s.setTitle("元の予定");
+        s.setEventDate(LocalDate.of(2026, 9, 12));
+        s = schedules.save(s);
+        mvc.perform(post("/admin/schedules/{id}/edit", s.getId()).session(login("editor")).with(csrf())
+                        .param("title", "変更").param("eventDate", "2026-09-12")
+                        .param("startTime", "12:00").param("endTime", "10:00"))
+                .andExpect(status().isOk()).andExpect(model().attributeHasErrors("scheduleForm"))
+                .andExpect(content().string(containsString("終了時間は開始時間より後")))
+                .andExpect(content().string(containsString("/admin/schedules/" + s.getId() + "/edit")));
+        assertThat(schedules.findById(s.getId()).orElseThrow().getTitle()).isEqualTo("元の予定");
+    }
+
+    @Test
+    void missingScheduleIs404() throws Exception {
+        mvc.perform(get("/admin/schedules/999999/edit").session(login("editor")))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void invalidCalendarRangesReturnJson400() throws Exception {
+        for (String end : new String[]{"invalid", "2026-08-01", "2027-09-01"}) {
+            mvc.perform(get("/api/schedules").param("start", "2026-09-01").param("end", end))
+                    .andExpect(status().isBadRequest()).andExpect(jsonPath("$.success").value(false));
+        }
+        mvc.perform(get("/api/schedules").param("start", "2026-09-01"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.success").value(false));
+    }
+
+    @Test
+    void surveyAcceptsOffsetDateRanges() throws Exception {
+        mvc.perform(get("/api/survey/day-types").session(login("editor"))
+                        .param("start", "2026-09-12T00:00:00+09:00").param("end", "2026-09-14T00:00:00+09:00"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$['2026-09-12']").value("auto"));
+    }
+
+    @Test
+    void futureNewsCannotBeReadByDirectUrl() throws Exception {
+        News n = new News();
+        n.setTitle("公開前の記事");
+        n.setContent("まだ公開しない本文");
+        n.setPublishedAt(LocalDateTime.now().plusDays(10));
+        n = news.save(n);
+        mvc.perform(get("/news/{id}", n.getId())).andExpect(status().isNotFound())
+                .andExpect(content().string(not(containsString("まだ公開しない本文"))));
+        n.setPublishedAt(LocalDateTime.now().minusDays(1));
+        news.save(n);
+        mvc.perform(get("/news/{id}", n.getId())).andExpect(status().isOk());
+    }
+
+    private Player player(String name, int number, int hits, String position) {
+        Player p = new Player();
+        p.setName(name);
+        p.setBackNumber(number);
+        p.setDeleteFlg(0);
+        p.setAtBats(10);
+        p.setHits(hits);
+        PlayerPosition pos = new PlayerPosition();
+        pos.setPosition(position);
+        pos.setPlayer(p);
+        p.getPositions().add(pos);
+        return players.save(p);
+    }
+
+    @Test
+    void playersAndPositionsRenderOutsidePersistenceContext() throws Exception {
+        Player p = player("確認用選手", 10, 10, "投手");
+        mvc.perform(get("/players")).andExpect(status().isOk())
+                .andExpect(content().string(containsString("確認用選手")))
+                .andExpect(content().string(containsString("投手")))
+                .andExpect(content().string(containsString("1.000")));
+        mvc.perform(get("/players/{id}/edit", p.getId()).session(login("editor")))
+                .andExpect(status().isOk()).andExpect(content().string(containsString("確認用選手")));
+    }
+
+    @Test
+    void playerPositionsCanBeUpdated() throws Exception {
+        Player p = player("元の名前", 10, 2, "投手");
+        mvc.perform(post("/players/{id}/edit", p.getId()).session(login("editor")).with(csrf())
+                        .param("name", "新しい名前").param("positions", "捕手").param("atBats", "10").param("hits", "3"))
+                .andExpect(redirectedUrl("/players"));
+        Player updated = players.findById(p.getId()).orElseThrow();
+        assertThat(updated.getName()).isEqualTo("新しい名前");
+        assertThat(updated.getPositions()).extracting(PlayerPosition::getPosition).containsExactly("捕手");
+    }
+
+    @Test
+    void requestedPlayerSortChangesOrder() throws Exception {
+        Player first = player("背番号先", 1, 1, "外野手");
+        Player second = player("打率先", 99, 9, "投手");
+        var result = mvc.perform(get("/players").param("sort", "average"))
+                .andExpect(status().isOk()).andReturn();
+        @SuppressWarnings("unchecked")
+        var sorted = (java.util.List<Player>) result.getModelAndView().getModel().get("players");
+        assertThat(sorted).extracting(Player::getId).containsExactly(second.getId(), first.getId());
+    }
+
+    @Test
+    void unpaidCountExcludesDeletedPlayersAndDoesNotCreateRows() {
+        player("在籍", 1, 1, "投手");
+        Player deleted = player("退部", 2, 1, "捕手");
+        deleted.setDeleteFlg(1);
+        players.save(deleted);
+        Fee fee = new Fee();
+        fee.setPlayerId(deleted.getId());
+        fees.save(fee);
+        assertThat(feeService.countUnpaid()).isEqualTo(1);
+        assertThat(fees.count()).isEqualTo(1);
+    }
+
+    @Test
+    void surveyCountsExcludeAnswersFromDeletedMembers() {
+        SurveyMember member = new SurveyMember();
+        member.setName("元回答者");
+        member = members.save(member);
+        LocalDate day = LocalDate.of(2026, 9, 12);
+        surveyService.saveAnswer(day, member.getId(), "参加", "");
+        member.setDeleteFlg(1);
+        members.save(member);
+        assertThat(surveyService.getSummary(day)).containsEntry("参加", 0L).containsEntry("未回答", 0L);
+    }
+}

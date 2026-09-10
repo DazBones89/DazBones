@@ -44,6 +44,12 @@ public class FeeService {
     }
 
     public void saveOrUpdateByPlayer(Long playerId, Integer paidFlg, Integer amount, String comment) {
+        Player player = playerService.findById(playerId);
+        if (player == null || !Integer.valueOf(0).equals(player.getDeleteFlg())
+                || (paidFlg != null && paidFlg != 0 && paidFlg != 1)
+                || (amount != null && amount < 0)) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST);
+        }
         Fee fee = feeRepository.findByPlayerId(playerId).orElse(new Fee());
 
         fee.setPlayerId(playerId);
@@ -72,7 +78,6 @@ public class FeeService {
     }
 
     public long countUnpaid() {
-        createMissingFeeRowsForActivePlayers();
-        return feeRepository.findByPaidFlgOrderByUpdatedAtDesc(0).size();
+        return feeRepository.countUnpaidActivePlayers();
     }
 }

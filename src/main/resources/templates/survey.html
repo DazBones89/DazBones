@@ -3,10 +3,10 @@
       xmlns:th="http://www.thymeleaf.org"
       th:replace="~{layout :: layout(~{::title}, ~{::section})}">
 
-<head>
-    <title>アンケート | DazBones</title>
+<head><title>アンケート | DazBones</title></head>
 
-    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css" rel="stylesheet">
+<body>
+<section class="px-4 py-6">
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
 
     <style>
@@ -44,10 +44,7 @@
             padding: 2px 4px;
         }
     </style>
-</head>
 
-<body>
-<section class="px-4 py-6">
 
     <div class="mb-5">
         <h1 class="text-2xl font-black db-brown">アンケート</h1>
@@ -201,7 +198,7 @@
         </div>
     </div>
 
-</section>
+
 
 <script th:inline="javascript">
     const selectedSurveyMemberIdFromSession = /*[[${selectedSurveyMemberId}]]*/ null;
@@ -238,14 +235,18 @@
 
         surveyCalendar.render();
 
+        document.getElementById('answerMemberId').addEventListener('change', function () {
+            document.getElementById('globalMemberSelect').value = this.value;
+            loadSurveyDetail(document.getElementById('answerDate').value);
+        });
+
         if (selectedSurveyMemberIdFromSession !== null) {
             document.getElementById('globalMemberSelect').value = selectedSurveyMemberIdFromSession;
         }
     });
 
     function applySurveyDayBackgrounds(start, end) {
-        fetch('/api/survey/day-types?start=' + encodeURIComponent(start) + '&end=' + encodeURIComponent(end))
-            .then(response => response.json())
+        fetchJson('/api/survey/day-types?start=' + encodeURIComponent(start) + '&end=' + encodeURIComponent(end))
             .then(dayTypes => {
                 document.querySelectorAll('.fc-daygrid-day').forEach(cell => {
                     cell.classList.remove('survey-auto', 'survey-manual', 'survey-mixed', 'survey-none');
@@ -253,7 +254,7 @@
                     const type = dayTypes[date] || 'none';
                     cell.classList.add('survey-' + type);
                 });
-            });
+            }).catch(showSurveyError);
     }
 
     function openSurveyModal(date) {
@@ -261,9 +262,7 @@
         document.getElementById('modalDateTitle').textContent = date;
 
         const globalMemberId = document.getElementById('globalMemberSelect').value;
-        if (globalMemberId) {
-            document.getElementById('answerMemberId').value = globalMemberId;
-        }
+        document.getElementById('answerMemberId').value = globalMemberId;
 
         loadSurveyDetail(date);
     }
@@ -275,8 +274,7 @@
             url += '&memberId=' + encodeURIComponent(memberId);
         }
 
-        fetch(url)
-            .then(response => response.json())
+        fetchJson(url)
             .then(data => {
                 document.getElementById('modalSurveyTitle').textContent = data.title || '参加アンケート';
 
@@ -291,6 +289,7 @@
                     document.getElementById('answerStatus').value = data.myStatus;
                     document.getElementById('answerComment').value = data.myComment || '';
                 } else {
+                    document.getElementById('answerStatus').value = '参加';
                     document.getElementById('myAnswerBox').classList.add('hidden');
                     document.getElementById('myAnswerStatus').textContent = '';
                     document.getElementById('answerComment').value = '';
@@ -299,7 +298,7 @@
                 const modal = document.getElementById('surveyModal');
                 modal.classList.remove('hidden');
                 modal.classList.add('flex');
-            });
+            }).catch(showSurveyError);
     }
 
     function closeSurveyModal() {
@@ -348,12 +347,11 @@
             params.append(csrfParameterName, csrfToken);
         }
 
-        fetch('/survey/answer', {
+        fetchJson('/survey/answer', {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
             body: params
         })
-            .then(response => response.json())
             .then(data => {
                 if (!data.success) {
                     alert(data.message || '保存に失敗しました');
@@ -367,12 +365,12 @@
                 }
 
                 applySurveyDayBackgrounds(
-                    surveyCalendar.view.activeStart.toISOString().split('T')[0],
-                    surveyCalendar.view.activeEnd.toISOString().split('T')[0]
+                    localDate(surveyCalendar.view.activeStart),
+                    localDate(surveyCalendar.view.activeEnd)
                 );
 
                 loadSurveyDetail(date);
-            });
+            }).catch(showSurveyError);
     }
 
     function createManualSurvey() {
@@ -387,12 +385,11 @@
             params.append(csrfParameterName, csrfToken);
         }
 
-        fetch('/survey/manual', {
+        fetchJson('/survey/manual', {
             method: 'POST',
             headers: {'Content-Type': 'application/x-www-form-urlencoded'},
             body: params
         })
-            .then(response => response.json())
             .then(data => {
                 if (!data.success) {
                     alert(data.message || '作成に失敗しました');
@@ -404,14 +401,33 @@
                 }
 
                 applySurveyDayBackgrounds(
-                    surveyCalendar.view.activeStart.toISOString().split('T')[0],
-                    surveyCalendar.view.activeEnd.toISOString().split('T')[0]
+                    localDate(surveyCalendar.view.activeStart),
+                    localDate(surveyCalendar.view.activeEnd)
                 );
 
                 loadSurveyDetail(date);
-            });
+            }).catch(showSurveyError);
+    }
+
+    function localDate(date) {
+        return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0')
+            + '-' + String(date.getDate()).padStart(2, '0');
+    }
+
+    async function fetchJson(url, options) {
+        const response = await fetch(url, options);
+        if (response.status === 401 || response.status === 403) {
+            throw new Error('ログイン状態を確認してください。再ログインが必要な場合があります。');
+        }
+        if (!response.ok) throw new Error('処理に失敗しました。入力内容や通信状態を確認してください。');
+        return response.json();
+    }
+
+    function showSurveyError(error) {
+        alert(error.message || '通信に失敗しました。もう一度お試しください。');
     }
 </script>
 
+</section>
 </body>
 </html>

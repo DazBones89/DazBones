@@ -31,7 +31,10 @@ public class NewsController {
 
         News news = service.findById(id);
 
-        if (news == null) return "error/404";
+        if (news == null || news.getPublishedAt() == null
+                || news.getPublishedAt().isAfter(java.time.LocalDateTime.now())) {
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND);
+        }
 
         model.addAttribute("news", news);
         model.addAttribute("userSession", session.getAttribute("userSession"));

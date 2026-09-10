@@ -174,14 +174,16 @@ public class Player {
 
     // 打率（数値）
     public Double getBattingAverage() {
-        if (atBats == null || atBats == 0) return null;
+        if (atBats == null || atBats <= 0 || hits == null) return null;
         return (double) hits / atBats;
     }
 
     // 打率（表示用 .321）
     public String getDisplayAverage() {
-        if (atBats == null || atBats == 0) return "---";
-        return String.format("%.3f", (double) hits / atBats).substring(1);
+        Double average = getBattingAverage();
+        if (average == null) return "---";
+        String formatted = String.format(java.util.Locale.ROOT, "%.3f", average);
+        return formatted.startsWith("0.") ? formatted.substring(1) : formatted;
     }
 
     // 投打表示

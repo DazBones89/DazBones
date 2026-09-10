@@ -26,7 +26,7 @@ public class SurveyMemberController {
         model.addAttribute("members", service.getActiveMembers());
         model.addAttribute("userSession", session.getAttribute("userSession"));
 
-        return "admin/surveyMemberList";
+        return "surveyMemberList";
     }
 
     @PostMapping("/admin/survey-members")

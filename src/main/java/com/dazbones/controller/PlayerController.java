@@ -44,6 +44,25 @@ public class PlayerController {
                 ? service.getAll()
                 : service.getActivePlayers();
 
+        if (!List.of("backNumber", "position", "average").contains(sort)) sort = "backNumber";
+        players = new ArrayList<>(players);
+        java.util.Comparator<Player> byNumber = java.util.Comparator.comparing(Player::getBackNumber,
+                java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()));
+        java.util.Comparator<Player> ordering = switch (sort) {
+            case "average" -> java.util.Comparator.comparing(Player::getBattingAverage,
+                    java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder()));
+            case "position" -> java.util.Comparator.comparingInt(p -> p.getPositions().stream()
+                    .mapToInt(pos -> switch (pos.getPosition()) {
+                        case "投手" -> 0;
+                        case "捕手" -> 1;
+                        case "内野手" -> 2;
+                        case "外野手" -> 3;
+                        default -> 4;
+                    }).min().orElse(5));
+            default -> byNumber;
+        };
+        players.sort(ordering.thenComparing(byNumber).thenComparing(Player::getId));
+
         model.addAttribute("players", players);
         model.addAttribute("userSession", user);
         model.addAttribute("sort", sort);

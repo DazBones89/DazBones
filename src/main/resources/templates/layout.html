@@ -86,11 +86,9 @@
                     ログイン
                 </a>
 
-                <a th:if="${userSession != null}"
-                   th:href="@{/logout}"
-                   class="rounded-xl border px-4 py-3 text-center">
-                    ログアウト
-                </a>
+                <form th:if="${userSession != null}" th:action="@{/logout}" method="post">
+                    <button type="submit" class="w-full rounded-xl border px-4 py-3 text-center">ログアウト</button>
+                </form>
             </div>
 
             <!-- 編集者・管理者メニュー -->
