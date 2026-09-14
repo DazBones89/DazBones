@@ -25,8 +25,9 @@ public class SurveyController {
             return "error/404";
         }
 
-        model.addAttribute("members", surveyService.getActiveMembers());
-        model.addAttribute("selectedSurveyMemberId", session.getAttribute("selectedSurveyMemberId"));
+        UserSession user=(UserSession)session.getAttribute("userSession");
+        model.addAttribute("members", user.isAdmin()?surveyService.getActiveMembers():surveyService.getActiveMembers().stream().filter(m->m.getId().equals(user.getMemberId())).toList());
+        model.addAttribute("selectedSurveyMemberId", user.isAdmin()?session.getAttribute("selectedSurveyMemberId"):user.getMemberId());
         model.addAttribute("userSession", session.getAttribute("userSession"));
 
         return "survey";
@@ -103,6 +104,11 @@ public class SurveyController {
             return Map.of();
         }
 
+        UserSession user=(UserSession)session.getAttribute("userSession");
+        if(!user.isAdmin()) {
+            if(memberId!=null && !memberId.equals(user.getMemberId())) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN);
+            memberId=user.getMemberId();
+        }
         return surveyService.getDetail(LocalDate.parse(date), memberId);
     }
 
@@ -117,6 +123,8 @@ public class SurveyController {
             return Map.of("success", false, "message", "権限がありません");
         }
 
+        UserSession user=(UserSession)session.getAttribute("userSession");
+        if(!user.isAdmin() && !memberId.equals(user.getMemberId())) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN);
         surveyService.saveAnswer(LocalDate.parse(date), memberId, status, comment);
         session.setAttribute("selectedSurveyMemberId", memberId);
 
@@ -128,7 +136,7 @@ public class SurveyController {
     public Map<String, Object> createManual(@RequestParam String date,
                                             @RequestParam(required = false) String title,
                                             HttpSession session) {
-        if (!canManage(session)) {
+        if (!isAdmin(session)) {
             return Map.of("success", false, "message", "権限がありません");
         }
 
@@ -137,8 +145,17 @@ public class SurveyController {
         return Map.of("success", true);
     }
 
+    @PostMapping("/survey/manual/delete")
+    @ResponseBody
+    public Map<String,Object> deleteManual(@RequestParam String date,HttpSession session) {
+        if(!isAdmin(session)) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN);
+        surveyService.deleteManual(LocalDate.parse(date));return Map.of("success",true);
+    }
+
+    private boolean isAdmin(HttpSession session){UserSession user=(UserSession)session.getAttribute("userSession");return user!=null&&user.isAdmin();}
+
     private boolean canManage(HttpSession session) {
         UserSession user = (UserSession) session.getAttribute("userSession");
-        return user != null && user.canManage();
+        return user != null && user.isLoggedIn();
     }
 }

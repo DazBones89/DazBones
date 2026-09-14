@@ -1,0 +1,5 @@
+<!DOCTYPE html><html lang="ja" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: layout(~{::title}, ~{::section})}">
+<head><title>画像サイズを確認してください | DazBones</title></head><body><section class="p-5 space-y-4">
+<h1 class="text-xl font-bold">画像サイズを確認してください</h1><p>画像は5MB以内で選択してください。今回の送信内容は保存していません。</p>
+<a th:href="@{/players}" class="underline">選手一覧へ</a><a th:href="@{/admin/upload/group-photo}" class="block underline">集合写真のアップロードへ</a>
+</section></body></html>

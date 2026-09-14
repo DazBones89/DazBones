@@ -14,12 +14,12 @@ public class PageController {
 
     private final NewsService newsService;
     private final ScheduleService scheduleService;
-    private final FeeService feeService;
+    private final com.dazbones.service.AnnualFeeService feeService;
     private final SurveyService surveyService;
 
     public PageController(NewsService newsService,
                           ScheduleService scheduleService,
-                          FeeService feeService,
+                          com.dazbones.service.AnnualFeeService feeService,
                           SurveyService surveyService) {
         this.newsService = newsService;
         this.scheduleService = scheduleService;
@@ -31,9 +31,10 @@ public class PageController {
     public String home(Model model, HttpSession session) {
         model.addAttribute("userSession", session.getAttribute("userSession"));
         model.addAttribute("newsList", newsService.getTop3());
+        model.addAttribute("memberNewsList", session.getAttribute("userSession") != null ? newsService.memberTop3() : java.util.List.of());
         model.addAttribute("todaySchedules", scheduleService.getToday());
 
-        model.addAttribute("unpaidCount", feeService.countUnpaid());
+        model.addAttribute("unpaidCount", feeService.unpaidCount());
         model.addAttribute("todayNoAnswerCount", surveyService.countTodayNoAnswer());
 
         return "main";
@@ -46,7 +47,19 @@ public class PageController {
     }
 
     @GetMapping("/history")
-    public String history(Model model, HttpSession session) {
+    public String history(@org.springframework.web.bind.annotation.RequestParam(required=false) Integer year, Model model, HttpSession session) {
+        int selected = year == null ? java.time.LocalDate.now().getYear() : year;
+        if (selected < 1900 || selected > 2100) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.BAD_REQUEST);
+        var rows = scheduleService.getRange(java.time.LocalDate.of(selected,1,1),java.time.LocalDate.of(selected+1,1,1)).stream()
+                .filter(s -> s.getEventDate().isBefore(java.time.LocalDate.now())).toList();
+        model.addAttribute("year", selected);
+        var years = new java.util.TreeSet<Integer>(java.util.Comparator.reverseOrder());
+        years.add(selected); years.add(java.time.LocalDate.now().getYear());
+        scheduleService.getPast().forEach(s -> years.add(s.getEventDate().getYear()));
+        model.addAttribute("years", years); model.addAttribute("history", rows);
+        model.addAttribute("wins",rows.stream().filter(s -> "勝利".equals(s.getResultStatus())).count());
+        model.addAttribute("losses",rows.stream().filter(s -> "敗北".equals(s.getResultStatus())).count());
+        model.addAttribute("draws",rows.stream().filter(s -> "引分".equals(s.getResultStatus())).count());
         model.addAttribute("userSession", session.getAttribute("userSession"));
         return "history";
     }

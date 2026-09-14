@@ -26,6 +26,16 @@ public class GlobalExceptionHandler {
         return error(400, request, response);
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public Object handleValidation(IllegalArgumentException e,HttpServletRequest request,HttpServletResponse response){
+        return error(400,request,response);
+    }
+
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public Object handleUpload(Exception e,HttpServletRequest request,HttpServletResponse response){
+        response.setStatus(413);return new ModelAndView("error/413");
+    }
+
     @ExceptionHandler(Exception.class)
     public Object handleException(Exception e, HttpServletRequest request, HttpServletResponse response) {
         log.error("Request failed: {} {}", request.getMethod(), request.getRequestURI(), e);

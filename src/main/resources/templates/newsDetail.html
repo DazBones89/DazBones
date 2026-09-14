@@ -10,7 +10,7 @@
 <body>
 <section class="px-4 py-6">
 
-    <a th:href="@{/news}" class="mb-4 inline-block text-sm font-bold db-gold">
+    <a th:href="${news.audience == 'MEMBERS'} ? @{/news/members} : @{/news}" class="mb-4 inline-block text-sm font-bold db-gold">
         ＜ お知らせ一覧へ戻る
     </a>
 

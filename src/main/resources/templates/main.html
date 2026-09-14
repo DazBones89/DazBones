@@ -13,7 +13,7 @@
     <!-- ファーストビュー -->
     <div class="relative h-[390px] overflow-hidden bg-gray-200">
         <img src="/uploads/images/group-photo.jpg"
-             onerror="this.onerror=null; this.src='/images/default-group-photo.jpg';"
+             onerror="this.onerror=null; this.src='/images/no-image.png';"
              alt="DazBones 集合写真"
              class="h-full w-full object-cover">
 
@@ -162,6 +162,13 @@
         </div>
     </div>
 
+    <div th:if="${userSession != null}" class="px-4 pb-6">
+        <div class="rounded-2xl border p-4"><h2 class="font-bold text-xl">メンバー限定のお知らせ</h2>
+            <a th:href="@{/news/members}" class="text-sm underline">一覧を見る</a>
+            <p th:if="${memberNewsList.isEmpty()}" class="py-3 text-sm text-gray-500">現在お知らせはありません。</p>
+            <a th:each="n:${memberNewsList}" th:href="@{/news/{id}(id=${n.id})}" th:text="${n.title}" class="block border-b py-3"></a>
+        </div>
+    </div>
     <!-- 写真 -->
     <div class="px-4 pb-8">
         <div class="rounded-2xl bg-white p-4 shadow-md ring-1 ring-gray-100">
@@ -172,22 +179,22 @@
 
             <div class="flex gap-3 overflow-x-auto pb-2">
                 <img src="/uploads/images/group-photo.jpg"
-                     onerror="this.onerror=null; this.src='/images/default-group-photo.jpg';"
+                     onerror="this.onerror=null; this.src='/images/no-image.png';"
                      alt="写真1"
                      class="h-28 w-28 shrink-0 rounded-xl object-cover">
 
                 <img src="/uploads/images/group-photo.jpg"
-                     onerror="this.onerror=null; this.src='/images/default-group-photo.jpg';"
+                     onerror="this.onerror=null; this.src='/images/no-image.png';"
                      alt="写真2"
                      class="h-28 w-28 shrink-0 rounded-xl object-cover">
 
                 <img src="/uploads/images/group-photo.jpg"
-                     onerror="this.onerror=null; this.src='/images/default-group-photo.jpg';"
+                     onerror="this.onerror=null; this.src='/images/no-image.png';"
                      alt="写真3"
                      class="h-28 w-28 shrink-0 rounded-xl object-cover">
 
                 <img src="/uploads/images/group-photo.jpg"
-                     onerror="this.onerror=null; this.src='/images/default-group-photo.jpg';"
+                     onerror="this.onerror=null; this.src='/images/no-image.png';"
                      alt="写真4"
                      class="h-28 w-28 shrink-0 rounded-xl object-cover">
             </div>

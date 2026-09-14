@@ -24,23 +24,11 @@ import java.util.List;
 @Configuration
 public class SecurityConfig {
     @Bean
-    AuthenticationManager authenticationManager(@Value("${app.auth.admin-code:}") String adminCode,
-                                                @Value("${app.auth.editor-code:}") String editorCode) {
-        if (!adminCode.isBlank() && adminCode.equals(editorCode)) {
-            throw new IllegalStateException("管理者と編集者には異なるログインコードを設定してください");
-        }
-        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
-        List<UserDetails> users = new ArrayList<>();
-        if (!adminCode.isBlank()) {
-            users.add(User.withUsername("admin").password(encoder.encode(adminCode)).roles("ADMIN").build());
-        }
-        if (!editorCode.isBlank()) {
-            users.add(User.withUsername("editor").password(encoder.encode(editorCode)).roles("EDITOR").build());
-        }
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setUserDetailsService(new InMemoryUserDetailsManager(users));
-        provider.setPasswordEncoder(encoder);
-        return new ProviderManager(provider);
+    org.springframework.security.core.userdetails.UserDetailsService userDetailsService(com.dazbones.repository.LoginCredentialRepository repo) {
+        return id -> {
+            var c = repo.findById(id).orElseThrow(() -> new org.springframework.security.core.userdetails.UsernameNotFoundException("Unknown login"));
+            return User.withUsername(c.getLoginId()).password(c.getCodeHash()).roles(c.getRole().toUpperCase(java.util.Locale.ROOT)).build();
+        };
     }
 
     @Bean
@@ -55,16 +43,19 @@ public class SecurityConfig {
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, SecurityContextRepository contexts,
-                                            CsrfTokenRepository csrfTokens) throws Exception {
+                                            CsrfTokenRepository csrfTokens, com.dazbones.service.CredentialService credentials) throws Exception {
         return http
                 .securityContext(context -> context.securityContextRepository(contexts))
                 .csrf(csrf -> csrf.csrfTokenRepository(csrfTokens))
+                .addFilterAfter(new SessionValidityFilter(credentials), org.springframework.security.web.context.SecurityContextHolderFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         .dispatcherTypeMatchers(DispatcherType.ERROR, DispatcherType.FORWARD).permitAll()
-                        .requestMatchers("/admin/survey-members/*/delete", "/players/*/restore", "/gear/delete").hasRole("ADMIN")
+                        .requestMatchers("/survey/manual", "/survey/manual/delete", "/admin/survey-members/*/delete",
+                                "/admin/survey-members/*/restore", "/admin/survey-members/*/code", "/players/*/restore", "/gear/delete").hasRole("ADMIN")
+                        .requestMatchers("/survey/**", "/api/survey/**", "/news/members").hasAnyRole("ADMIN", "EDITOR", "MEMBER")
                         .requestMatchers("/admin/schedules/**", "/admin/survey-members/**",
                                 "/players/add", "/players/*/edit", "/players/*/delete",
-                                "/survey/**", "/api/survey/**", "/fee/**", "/gear/**").hasAnyRole("ADMIN", "EDITOR")
+                                "/fee/**", "/gear/**").hasAnyRole("ADMIN", "EDITOR")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().permitAll())
                 .exceptionHandling(errors -> errors

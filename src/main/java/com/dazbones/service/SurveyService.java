@@ -45,13 +45,16 @@ public class SurveyService {
                 });
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public void createManualSurvey(LocalDate date, String title) {
+        if(title != null && title.trim().length()>100) throw new IllegalArgumentException("タイトルは100文字以内です");
         SurveyEvent event = getOrCreateEvent(date, true);
         event.setManualFlg(true);
         event.setTitle(title == null || title.isBlank() ? "追加アンケート" : title.trim());
         eventRepository.save(event);
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public void saveAnswer(LocalDate date, Long memberId, String status, String comment) {
         SurveyMember member = memberRepository.findById(memberId).orElse(null);
         SurveyEvent existing = eventRepository.findByTargetDate(date).orElse(null);
@@ -177,8 +180,22 @@ public class SurveyService {
         result.put("未回答", noAnswerList);
         result.put("myStatus", myStatus);
         result.put("myComment", myComment);
+        result.put("manual", event != null && Boolean.TRUE.equals(event.getManualFlg()));
+        result.put("canAnswer", isWeekend(date) || holidayService.isHoliday(date) || (event != null && Boolean.TRUE.equals(event.getManualFlg())));
 
         return result;
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public void deleteManual(LocalDate date) {
+        SurveyEvent event=eventRepository.findByTargetDate(date).orElseThrow(()->new IllegalArgumentException("アンケートが見つかりません"));
+        if(!Boolean.TRUE.equals(event.getManualFlg())) throw new IllegalArgumentException("手動アンケートではありません");
+        if(isWeekend(date)||holidayService.isHoliday(date)) {
+            event.setManualFlg(false); event.setTitle("参加アンケート"); eventRepository.save(event);
+        } else {
+            answerRepository.deleteBySurveyEventId(event.getId());
+            answerRepository.flush();eventRepository.delete(event);
+        }
     }
 
     private boolean isWeekend(LocalDate date) {

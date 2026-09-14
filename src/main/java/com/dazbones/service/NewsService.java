@@ -17,13 +17,19 @@ public class NewsService {
     }
 
     public List<News> getTop3() {
-        return repo.findTop3Published(LocalDateTime.now());
+        return repo.findTop3ByAudienceAndPublishedAtLessThanEqualOrderByPublishedAtDesc("PUBLIC", LocalDateTime.now());
     }
 
     public List<News> getAllPublished() {
-        return repo.findAllPublished(LocalDateTime.now());
+        return published("PUBLIC");
     }
 
+    public List<News> published(String audience) {
+        return repo.findByAudienceAndPublishedAtLessThanEqualOrderByPublishedAtDesc(audience,LocalDateTime.now());
+    }
+    public List<News> memberTop3() {
+        return repo.findTop3ByAudienceAndPublishedAtLessThanEqualOrderByPublishedAtDesc("MEMBERS",LocalDateTime.now());
+    }
     public List<News> getAll() {
         return repo.findAll();
     }

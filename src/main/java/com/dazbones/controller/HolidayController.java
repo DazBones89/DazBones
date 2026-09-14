@@ -42,8 +42,10 @@ public class HolidayController {
             return "error/404";
         }
 
-        service.addHoliday(holidayDate, name);
-        redirectAttributes.addFlashAttribute("successMessage", "祝日を登録しました");
+        try {
+            service.addHoliday(holidayDate, name);
+            redirectAttributes.addFlashAttribute("successMessage", "祝日を登録しました");
+        } catch (IllegalArgumentException e) { redirectAttributes.addFlashAttribute("errorMessage", e.getMessage()); }
 
         return "redirect:/admin/holidays";
     }
@@ -65,8 +67,10 @@ public class HolidayController {
         try {
             int count = service.importCsv(file);
             redirectAttributes.addFlashAttribute("successMessage", count + "件の祝日を取り込みました");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage() + "。登録は行っていません。");
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "CSV取込に失敗しました: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("errorMessage", "CSV取込に失敗しました。登録は行っていません。形式や文字コードを確認してください。");
         }
 
         return "redirect:/admin/holidays";

@@ -23,6 +23,9 @@ dependencies {
     // ✅ バリデーション（@Valid, @NotBlank, @Size, @Min, @Max など）
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'com.twelvemonkeys.imageio:imageio-webp:3.10.1'
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-mysql'
 
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'

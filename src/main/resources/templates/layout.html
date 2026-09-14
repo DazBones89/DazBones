@@ -77,6 +77,8 @@
                 <a th:href="@{/schedule}" class="rounded-xl border px-4 py-3 text-center">活動予定</a>
                 <a th:href="@{/photo}" class="rounded-xl border px-4 py-3 text-center">写真</a>
                 <a th:href="@{/history}" class="rounded-xl border px-4 py-3 text-center">活動履歴</a>
+                <a th:if="${userSession != null and userSession.memberId != null}" th:href="@{/survey}" class="rounded-xl border px-4 py-3 text-center">出欠回答</a>
+                <a th:if="${userSession != null}" th:href="@{/news/members}" class="rounded-xl border px-4 py-3 text-center">メンバー限定</a>
                 <a th:href="@{/news}" class="rounded-xl border px-4 py-3 text-center">お知らせ</a>
                 <a th:href="@{/policy}" class="rounded-xl border px-4 py-3 text-center">規約・ポリシー</a>
 

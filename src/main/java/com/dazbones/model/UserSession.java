@@ -5,9 +5,23 @@ import java.io.Serializable;
 public class UserSession implements Serializable {
 
     private final String role;
+    private final String loginId;
+    private final Long memberId;
+    private final long generation;
+    private final Long credentialVersion;
+
+    public UserSession(String role, String loginId, Long memberId, long generation, Long credentialVersion) {
+        this.role=role; this.loginId=loginId; this.memberId=memberId;
+        this.generation=generation; this.credentialVersion=credentialVersion;
+    }
+    public String getLoginId(){return loginId;}
+    public Long getMemberId(){return memberId;}
+    public long getGeneration(){return generation;}
+    public Long getCredentialVersion(){return credentialVersion;}
+
 
     public UserSession(String role) {
-        this.role = role;
+        this(role, null, null, 0, null);
     }
 
     public String getRole() {
@@ -37,6 +51,6 @@ public class UserSession implements Serializable {
         if (isEditor()) {
             return "ログイン中";
         }
-        return "ログイン";
+        return "member".equals(role) ? "メンバー" : "ログイン";
     }
 }

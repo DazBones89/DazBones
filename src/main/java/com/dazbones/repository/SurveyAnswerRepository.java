@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface SurveyAnswerRepository extends JpaRepository<SurveyAnswer, Long> {
+    void deleteBySurveyEventId(Long id);
 
     List<SurveyAnswer> findBySurveyEventId(Long id);
 

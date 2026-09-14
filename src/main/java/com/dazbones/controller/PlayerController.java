@@ -26,11 +26,11 @@ public class PlayerController {
 
     private final PlayerService service;
 
-    @Value("${app.upload-dir}")
-    private String uploadDir;
+    private final com.dazbones.service.ImageStorageService images;
 
-    public PlayerController(PlayerService service) {
+    public PlayerController(PlayerService service, com.dazbones.service.ImageStorageService images) {
         this.service = service;
+        this.images = images;
     }
 
     @GetMapping({"/players", "/player"})
@@ -102,13 +102,18 @@ public class PlayerController {
         Player player = new Player();
         applyFormToPlayer(player, form);
 
-        service.save(player);
-
-        String imagePath = savePlayerImageIfExists(imageFile, player.getId(), redirectAttributes);
-        if (imagePath != null) {
-            player.setImagePath(imagePath);
+        String uploaded = null;
+        try {
+            uploaded = images.savePlayer(imageFile);
+            if (uploaded != null) player.setImagePath(uploaded);
             service.save(player);
+        } catch (Exception e) {
+            images.discard(uploaded);
+            model.addAttribute("errorMessage", e instanceof IllegalArgumentException ? e.getMessage() : "保存に失敗しました。画像を選び直して再試行してください。");
+            model.addAttribute("userSession", session.getAttribute("userSession"));
+            return "playerAdd";
         }
+        redirectAttributes.addFlashAttribute("successMessage", "選手を登録しました");
 
         return "redirect:/players";
     }
@@ -160,14 +165,23 @@ public class PlayerController {
             return "playerEdit";
         }
 
-        applyFormToPlayer(player, form);
-
-        String imagePath = savePlayerImageIfExists(imageFile, player.getId(), redirectAttributes);
-        if (imagePath != null) {
-            player.setImagePath(imagePath);
+        String oldImage = player.getImagePath();
+        String uploaded = null;
+        try {
+            uploaded = images.savePlayer(imageFile);
+            applyFormToPlayer(player, form);
+            if (uploaded != null) player.setImagePath(uploaded);
+            service.save(player);
+        } catch (Exception e) {
+            images.discard(uploaded);
+            player.setImagePath(oldImage);
+            model.addAttribute("player", player);
+            model.addAttribute("userSession", session.getAttribute("userSession"));
+            model.addAttribute("errorMessage", e instanceof IllegalArgumentException ? e.getMessage() : "保存に失敗しました。画像を選び直して再試行してください。");
+            return "playerEdit";
         }
-
-        service.save(player);
+        if (uploaded != null) images.discard(oldImage);
+        redirectAttributes.addFlashAttribute("successMessage", "選手を更新しました");
 
         return "redirect:/players";
     }
@@ -242,57 +256,6 @@ public class PlayerController {
                 position.setPosition(positionName);
                 player.getPositions().add(position);
             }
-        }
-    }
-
-    private String savePlayerImageIfExists(MultipartFile file,
-                                           Long playerId,
-                                           RedirectAttributes redirectAttributes) {
-
-        if (file == null || file.isEmpty()) {
-            return null;
-        }
-
-        long max = 5L * 1024 * 1024;
-        if (file.getSize() > max) {
-            redirectAttributes.addFlashAttribute("errorMessage", "画像サイズが5MBを超えています");
-            return null;
-        }
-
-        String original = StringUtils.cleanPath(file.getOriginalFilename());
-        String ext = "";
-
-        int dot = original.lastIndexOf('.');
-        if (dot >= 0) {
-            ext = original.substring(dot + 1).toLowerCase();
-        }
-
-        if (!(ext.equals("jpg") || ext.equals("jpeg") || ext.equals("png") || ext.equals("webp"))) {
-            redirectAttributes.addFlashAttribute("errorMessage", "対応していない画像形式です");
-            return null;
-        }
-
-        try {
-            Path baseDir = Paths.get(uploadDir).toAbsolutePath().normalize();
-            Path playerDir = baseDir.resolve("players");
-            Files.createDirectories(playerDir);
-
-            String fileName = "player-" + playerId + "." + ext;
-            Path target = playerDir.resolve(fileName);
-
-            try (DirectoryStream<Path> ds = Files.newDirectoryStream(playerDir, "player-" + playerId + ".*")) {
-                for (Path p : ds) {
-                    Files.deleteIfExists(p);
-                }
-            }
-
-            Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
-
-            return "/uploads/images/players/" + fileName;
-
-        } catch (IOException e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "画像保存に失敗しました: " + e.getMessage());
-            return null;
         }
     }
 

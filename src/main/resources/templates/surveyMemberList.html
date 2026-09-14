@@ -15,6 +15,12 @@
     </a>
 
     <h1 class="mb-5 text-2xl font-black db-brown">回答者管理</h1>
+    <div th:if="${issuedCode}" class="mb-5 rounded-xl bg-yellow-50 p-4 space-y-2">
+        <p class="font-bold">ログイン情報を発行しました</p>
+        <p>ログインID：<strong th:text="${issuedLoginId}"></strong></p>
+        <p>コード：<code th:text="${issuedCode}"></code></p>
+        <p class="text-sm">コードはこの画面に一度だけ表示されます。本人に伝えてください。再発行すると以前のコードとログインは無効になります。</p>
+    </div>
 
     <div th:if="${successMessage}" class="mb-4 rounded-xl bg-green-50 p-3 text-sm font-bold text-green-700">
         <span th:text="${successMessage}"></span>
@@ -66,7 +72,7 @@
             <div th:each="member : ${members}" class="flex items-center justify-between gap-3 px-4 py-4">
 
                 <div>
-                    <p class="text-base font-bold db-brown" th:text="${member.name}">
+                    <p class="text-base font-bold db-brown" th:text="${member.name} + (${member.deleteFlg == 1} ? '（削除済み）' : '')">
                         山田 太郎
                     </p>
                     <p class="mt-1 text-xs text-gray-400"
@@ -75,7 +81,7 @@
                     </p>
                 </div>
 
-                <form th:if="${userSession != null and userSession.isAdmin()}"
+                <form th:if="${userSession != null and userSession.isAdmin() and member.deleteFlg == 0}"
                       th:action="@{/admin/survey-members/{id}/delete(id=${member.id})}"
                       method="post"
                       onsubmit="return confirm('この回答者を削除しますか？');">
@@ -91,6 +97,8 @@
                     </button>
                 </form>
 
+                <form th:if="${userSession.isAdmin() and member.deleteFlg == 1}" th:action="@{/admin/survey-members/{id}/restore(id=${member.id})}" method="post"><button class="rounded-xl border p-2 text-sm">復元</button></form>
+                <form th:if="${userSession.isAdmin() and member.deleteFlg == 0}" th:action="@{/admin/survey-members/{id}/code(id=${member.id})}" method="post" onsubmit="return confirm('専用ログインコードを発行します。以前のコードは使えなくなります。よろしいですか？');"><button class="rounded-xl border p-2 text-sm">コード発行</button></form>
             </div>
         </div>
     </div>

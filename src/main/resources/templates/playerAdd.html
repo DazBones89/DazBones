@@ -22,6 +22,9 @@
           enctype="multipart/form-data"
           class="space-y-5 rounded-2xl bg-white p-5 shadow-md ring-1 ring-gray-100">
 
+        <ul th:if="${#fields.hasAnyErrors()}" class="rounded-xl bg-red-50 p-3 text-sm text-red-600">
+            <li th:each="error : ${#fields.allErrors()}" th:text="${error}"></li>
+        </ul>
         <input type="hidden"
                th:if="${_csrf != null}"
                th:name="${_csrf.parameterName}"
@@ -81,7 +84,7 @@
 
         <div class="grid grid-cols-2 gap-3">
             <div>
-                <label class="mb-1 block text-sm font-bold db-brown">打席数</label>
+                <label class="mb-1 block text-sm font-bold db-brown">打数</label>
                 <input type="number" th:field="*{atBats}" min="0"
                        class="w-full rounded-xl border px-4 py-3"
                        th:classappend="${#fields.hasErrors('atBats')} ? ' border-red-500 bg-red-50' : ''">

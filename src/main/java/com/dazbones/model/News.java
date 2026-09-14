@@ -12,6 +12,10 @@ public class News {
     private Long id;
 
     private String title;
+    @Column(nullable=false,length=16)
+    private String audience = "PUBLIC";
+    public String getAudience(){return audience;}
+    public void setAudience(String value){audience=value;}
 
     @Column(columnDefinition = "TEXT")
     private String content;

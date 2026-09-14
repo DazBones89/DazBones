@@ -1,43 +1,15 @@
-<!DOCTYPE html>
-<html lang="ja"
-      xmlns:th="http://www.thymeleaf.org"
-      th:replace="~{layout :: layout(~{::title}, ~{::section})}">
-
-<head>
-    <title>活動履歴 | DazBones</title>
-</head>
-
-<body>
-<section class="px-4 py-6">
-
-    <div class="mb-5">
-        <h1 class="text-2xl font-black db-brown">活動履歴</h1>
-        <p class="mt-1 text-sm text-gray-500">過去の試合・大会・活動記録です</p>
-    </div>
-
-    <div class="rounded-2xl bg-white p-5 shadow-md ring-1 ring-gray-100">
-        <div class="mb-4 flex items-center gap-3">
-            <div class="flex h-12 w-12 items-center justify-center rounded-full bg-yellow-100 text-2xl">
-                🏆
-            </div>
-
-            <div>
-                <h2 class="text-lg font-black db-brown">活動履歴は今後追加予定です</h2>
-                <p class="mt-1 text-sm text-gray-500">試合結果・大会成績をここに表示します</p>
-            </div>
-        </div>
-
-        <p class="text-sm leading-7 text-gray-700">
-            現時点では活動予定・試合結果ページに統合しています。
-            今後、年度別・大会別の履歴管理を追加する場合は、このページを拡張します。
-        </p>
-
-        <a th:href="@{/schedule}"
-           class="mt-5 block rounded-xl db-bg-brown px-4 py-3 text-center text-sm font-black text-white">
-            活動予定・試合結果を見る
-        </a>
-    </div>
-
-</section>
-</body>
-</html>
+<!DOCTYPE html><html lang="ja" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: layout(~{::title}, ~{::section})}">
+<head><title>年度別活動履歴 | DazBones</title></head><body><section class="px-4 py-6 space-y-5">
+<h1 class="text-2xl font-bold" th:text="${year}+'年度の活動履歴'"></h1>
+<p class="text-sm text-gray-500">1月〜12月の過去の活動を表示します。当日以降の予定は活動予定から確認できます。</p>
+<form th:action="@{/history}" method="get" class="flex gap-2"><label class="self-center" for="historyYear">年度</label>
+<input id="historyYear" type="number" name="year" th:value="${year}" min="1900" max="2100" class="w-28 rounded-xl border p-2"><button class="rounded-xl border p-2">表示</button></form>
+<div class="flex flex-wrap gap-3"><a th:each="y:${years}" th:href="@{/history(year=${y})}" th:text="${y}+'年度'" class="underline"></a></div>
+<div class="rounded-xl bg-yellow-50 p-4" th:text="'活動 '+${history.size()}+'件 ／ '+${wins}+'勝 '+${losses}+'敗 '+${draws}+'分'"></div>
+<p th:if="${history.isEmpty()}">この年度の活動記録はありません。</p>
+<article th:each="s:${history}" class="rounded-xl border p-4 space-y-2">
+<p th:text="${#temporals.format(s.eventDate,'yyyy.MM.dd')}" class="text-sm text-gray-500"></p><h2 th:text="${s.title}" class="text-xl font-bold"></h2>
+<p th:text="${s.eventType}"></p><p th:if="${s.opponent != null and !s.opponent.isEmpty()}" th:text="'対戦相手：'+${s.opponent}"></p>
+<p th:text="${s.location}"></p><p><span th:text="${s.resultStatus}"></span> <span th:text="${s.score}"></span></p><p th:text="${s.comment}" class="whitespace-pre-line"></p>
+<a th:if="${userSession != null and userSession.canManage()}" th:href="@{/admin/schedules/{id}/edit(id=${s.id})}" class="underline">記録を編集</a></article>
+</section></body></html>

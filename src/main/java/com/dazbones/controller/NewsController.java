@@ -23,6 +23,15 @@ public class NewsController {
         model.addAttribute("newsList", service.getAllPublished());
         model.addAttribute("userSession", session.getAttribute("userSession"));
 
+        model.addAttribute("audience", "PUBLIC");
+        return "news";
+    }
+
+    @GetMapping("/news/members")
+    public String members(Model model, HttpSession session) {
+        model.addAttribute("newsList", service.published("MEMBERS"));
+        model.addAttribute("audience", "MEMBERS");
+        model.addAttribute("userSession", session.getAttribute("userSession"));
         return "news";
     }
 
@@ -31,7 +40,7 @@ public class NewsController {
 
         News news = service.findById(id);
 
-        if (news == null || news.getPublishedAt() == null
+        if (news == null || ("MEMBERS".equals(news.getAudience()) && session.getAttribute("userSession") == null) || news.getPublishedAt() == null
                 || news.getPublishedAt().isAfter(java.time.LocalDateTime.now())) {
             throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND);
         }

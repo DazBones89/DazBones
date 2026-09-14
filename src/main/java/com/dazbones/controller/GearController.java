@@ -27,19 +27,35 @@ public class GearController {
         }
 
         model.addAttribute("gears", gearService.findAll());
-        model.addAttribute("players", playerService.getActivePlayers());
+        model.addAttribute("players", playerService.getAll());
         model.addAttribute("userSession", session.getAttribute("userSession"));
 
         return "gear";
     }
 
     @PostMapping("/gear/save")
-    public String save(@ModelAttribute Gear gear, HttpSession session) {
+    public String save(@jakarta.validation.Valid @ModelAttribute Gear gear, org.springframework.validation.BindingResult errors,
+                       HttpSession session, Model model, org.springframework.web.servlet.mvc.support.RedirectAttributes flash) {
         if (!canManage(session)) {
             return "error/404";
         }
 
-        gearService.save(gear);
+        if (!errors.hasErrors()) {
+            try { gearService.save(gear); }
+            catch (IllegalArgumentException e) { errors.reject("invalid", e.getMessage()); }
+        }
+        if (errors.hasErrors()) {
+            model.addAttribute("errorMessage", errors.getAllErrors().get(0).getDefaultMessage());
+            var gears = new java.util.ArrayList<>(gearService.findAll());
+            gears.removeIf(g -> java.util.Objects.equals(g.getId(), gear.getId()));
+            if (gear.getId() != null) gears.add(0, gear);
+            else model.addAttribute("draft", gear);
+            model.addAttribute("gears", gears);
+            model.addAttribute("players", playerService.getAll());
+            model.addAttribute("userSession", session.getAttribute("userSession"));
+            return "gear";
+        }
+        flash.addFlashAttribute("successMessage", "道具を保存しました");
         return "redirect:/gear";
     }
 

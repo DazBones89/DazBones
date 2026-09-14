@@ -8,6 +8,9 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import java.util.List;
 
 public interface PlayerRepository extends JpaRepository<Player, Long> {
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from Player p where p.id=:id")
+    java.util.Optional<Player> lockForFee(Long id);
 
     // 通常一覧（論理削除除外）
     @Query("""

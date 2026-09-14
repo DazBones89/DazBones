@@ -14,3 +14,7 @@ Thumbs.db
 # Local credentials (never commit)
 config/local.properties
 .env
+
+# Private database backups and uploaded player photos
+backups/
+uploads/images/players/

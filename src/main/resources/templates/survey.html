@@ -52,7 +52,7 @@
     </div>
 
     <div class="mb-4 grid grid-cols-2 gap-2 text-sm font-bold">
-        <a th:href="@{/admin/survey-members}" class="rounded-xl border px-4 py-3 text-center">
+        <a th:if="${userSession.canManage()}" th:href="@{/admin/survey-members}" class="rounded-xl border px-4 py-3 text-center">
             回答者管理
         </a>
 
@@ -66,7 +66,7 @@
     <div class="mb-4 rounded-2xl bg-white p-4 shadow-md ring-1 ring-gray-100">
         <p class="mb-2 text-sm font-bold db-brown">現在の回答者</p>
 
-        <select id="globalMemberSelect" class="w-full rounded-xl border px-4 py-3">
+        <select th:disabled="${!userSession.isAdmin()}" id="globalMemberSelect" class="w-full rounded-xl border px-4 py-3">
             <option value="">未選択</option>
             <option th:each="member : ${members}"
                     th:value="${member.id}"
@@ -77,10 +77,12 @@
         </select>
 
         <p class="mt-2 text-xs text-gray-500">
-            一度選択して回答すると、ログアウトまで回答者が保持されます。
+            本人の専用ログインIDで回答します。管理者のみ他のメンバーの代理回答が可能です。
         </p>
     </div>
 
+    <p th:if="${!userSession.isAdmin() and userSession.memberId == null}" class="mb-4 rounded-xl bg-yellow-50 p-3 text-sm">共有コードでは閲覧のみ可能です。回答には管理者が発行する本人専用のID・コードでログインしてください。</p>
+    <p id="surveyMessage" role="status" aria-live="polite" class="mb-4 text-sm text-red-700"></p>
     <div class="mb-4 grid grid-cols-2 gap-2 text-xs font-bold">
         <div class="rounded-xl bg-yellow-200 px-3 py-2 text-center">土日祝：黄色</div>
         <div class="rounded-xl bg-sky-300 px-3 py-2 text-center">手動：水色</div>
@@ -113,6 +115,7 @@
             </div>
 
             <div class="space-y-4 px-5 py-5">
+                <p id="modalMessage" role="status" aria-live="polite" class="text-sm text-red-700"></p>
 
                 <div id="myAnswerBox" class="hidden rounded-xl bg-green-50 p-3 text-sm font-bold text-green-700">
                     現在の回答：<span id="myAnswerStatus"></span>
@@ -124,7 +127,7 @@
                     <input type="hidden" id="answerDate">
 
                     <label class="mb-1 block text-xs font-bold db-brown">名前</label>
-                    <select id="answerMemberId" class="mb-3 w-full rounded-xl border px-4 py-3">
+                    <select th:disabled="${!userSession.isAdmin()}" id="answerMemberId" class="mb-3 w-full rounded-xl border px-4 py-3">
                         <option value="">選択してください</option>
                         <option th:each="member : ${members}"
                                 th:value="${member.id}"
@@ -141,30 +144,31 @@
                     </select>
 
                     <label class="mb-1 block text-xs font-bold db-brown">コメント</label>
-                    <textarea id="answerComment"
+                    <textarea id="answerComment" maxlength="255"
                               rows="3"
                               class="mb-3 w-full rounded-xl border px-4 py-3"
                               placeholder="任意"></textarea>
 
                     <button type="button"
-                            onclick="submitSurveyAnswer()"
+                            id="saveAnswerButton" data-survey-write onclick="submitSurveyAnswer()"
                             class="w-full rounded-xl db-bg-brown px-4 py-3 font-black text-white">
                         回答を保存
                     </button>
                 </div>
 
-                <div class="rounded-xl bg-sky-50 p-4">
+                <div th:if="${userSession.isAdmin()}" class="rounded-xl bg-sky-50 p-4">
                     <h3 class="mb-2 text-sm font-black text-sky-700">手動アンケートを追加</h3>
                     <input type="text"
-                           id="manualSurveyTitle"
+                           id="manualSurveyTitle" maxlength="100"
                            placeholder="例：追加アンケート"
                            class="mb-3 w-full rounded-xl border px-4 py-3">
 
                     <button type="button"
-                            onclick="createManualSurvey()"
+                            data-survey-write onclick="createManualSurvey()"
                             class="w-full rounded-xl bg-sky-500 px-4 py-3 font-black text-white">
                         この日付に追加
                     </button>
+                    <button id="deleteManualButton" type="button" data-survey-write onclick="deleteManualSurvey()" class="hidden mt-3 w-full rounded-xl border border-red-500 p-3 text-red-700">手動アンケートを削除</button>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">
@@ -201,233 +205,91 @@
 
 
 <script th:inline="javascript">
-    const selectedSurveyMemberIdFromSession = /*[[${selectedSurveyMemberId}]]*/ null;
-    const csrfParameterName = /*[[${_csrf != null ? _csrf.parameterName : ''}]]*/ '';
-    const csrfToken = /*[[${_csrf != null ? _csrf.token : ''}]]*/ '';
-</script>
-
-<script>
-    let surveyCalendar = null;
-
-    document.addEventListener('DOMContentLoaded', function () {
-        const calendarEl = document.getElementById('surveyCalendar');
-
-        surveyCalendar = new FullCalendar.Calendar(calendarEl, {
-            initialView: 'dayGridMonth',
-            locale: 'ja',
-            height: 'auto',
-            headerToolbar: {
-                left: 'prev,next today',
-                center: 'title',
-                right: ''
-            },
-            events: '/api/survey/events',
-            datesSet: function(info) {
-                applySurveyDayBackgrounds(info.startStr, info.endStr);
-            },
-            dateClick: function(info) {
-                openSurveyModal(info.dateStr);
-            },
-            eventClick: function(info) {
-                openSurveyModal(info.event.startStr);
-            }
-        });
-
-        surveyCalendar.render();
-
-        document.getElementById('answerMemberId').addEventListener('change', function () {
-            document.getElementById('globalMemberSelect').value = this.value;
-            loadSurveyDetail(document.getElementById('answerDate').value);
-        });
-
-        if (selectedSurveyMemberIdFromSession !== null) {
-            document.getElementById('globalMemberSelect').value = selectedSurveyMemberIdFromSession;
-        }
-    });
-
-    function applySurveyDayBackgrounds(start, end) {
-        fetchJson('/api/survey/day-types?start=' + encodeURIComponent(start) + '&end=' + encodeURIComponent(end))
-            .then(dayTypes => {
-                document.querySelectorAll('.fc-daygrid-day').forEach(cell => {
-                    cell.classList.remove('survey-auto', 'survey-manual', 'survey-mixed', 'survey-none');
-                    const date = cell.getAttribute('data-date');
-                    const type = dayTypes[date] || 'none';
-                    cell.classList.add('survey-' + type);
-                });
-            }).catch(showSurveyError);
+    const selectedMember = /*[[${selectedSurveyMemberId}]]*/ null;
+    const isAdmin = /*[[${userSession.isAdmin()}]]*/ false;
+    const ownMember = /*[[${userSession.memberId}]]*/ null;
+    const csrfName = /*[[${_csrf.parameterName}]]*/ '';
+    const csrfToken = /*[[${_csrf.token}]]*/ '';
+    let surveyCalendar, busy = false, answerEnabled = false, detailSequence = 0;
+    const el = id => document.getElementById(id);
+    function message(text) { el('surveyMessage').textContent = text; el('modalMessage').textContent = text; }
+    async function request(url, options) {
+        const r = await fetch(url, options);
+        if (r.status === 401 || r.status === 403) throw new Error('権限がないかログインが切れています。ログイン状態を確認してください。');
+        if (!r.ok) throw new Error('保存・取得に失敗しました。入力内容を確認して再試行してください。');
+        const data = await r.json();
+        if (data.success === false) throw new Error(data.message || '処理に失敗しました');
+        return data;
     }
-
+    function localDate(d) { return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+    function setBusy(value) {
+        busy=value;
+        document.querySelectorAll('[data-survey-write]').forEach(b=>b.disabled=value);
+        el('saveAnswerButton').disabled=value || !answerEnabled;
+    }
+    async function backgrounds(start,end) {
+        try {
+            const types=await request('/api/survey/day-types?'+new URLSearchParams({start,end}));
+            document.querySelectorAll('.fc-daygrid-day').forEach(cell=>{
+                cell.classList.remove('survey-auto','survey-manual','survey-mixed','survey-none');
+                cell.classList.add('survey-'+(types[cell.getAttribute('data-date')]||'none'));
+            });
+        } catch(e) { message(e.message); }
+    }
+    function renderNames(id,names) { el(id).replaceChildren(); (names.length?names:['なし']).forEach(name=>{const li=document.createElement('li');li.textContent=name;el(id).append(li);}); }
+    async function loadDetail() {
+        const sequence=++detailSequence;
+        const params=new URLSearchParams({date:el('answerDate').value});
+        const memberId=isAdmin?el('answerMemberId').value:ownMember;
+        if(memberId)params.set('memberId',memberId);
+        answerEnabled=false;setBusy(busy);
+        try {
+            const data=await request('/api/survey/detail?'+params);
+            if(sequence!==detailSequence)return;
+            el('modalSurveyTitle').textContent=data.title;
+            ['参加','不参加','未定','未回答'].forEach((key,i)=>renderNames(['joinList','absentList','undecidedList','noAnswerList'][i],data[key]||[]));
+            el('answerStatus').value=data.myStatus||'参加';el('answerComment').value=data.myComment||'';
+            el('myAnswerBox').classList.toggle('hidden',!data.myStatus);el('myAnswerStatus').textContent=data.myStatus||'';
+            answerEnabled=!!data.canAnswer && (isAdmin || ownMember!==null);
+            setBusy(busy);
+            if(el('deleteManualButton'))el('deleteManualButton').classList.toggle('hidden',!data.manual);
+            el('surveyModal').classList.remove('hidden');el('surveyModal').classList.add('flex');
+        } catch(e){message(e.message);}
+    }
     function openSurveyModal(date) {
-        document.getElementById('answerDate').value = date;
-        document.getElementById('modalDateTitle').textContent = date;
-
-        const globalMemberId = document.getElementById('globalMemberSelect').value;
-        document.getElementById('answerMemberId').value = globalMemberId;
-
-        loadSurveyDetail(date);
+        if(busy)return;
+        message('');el('answerDate').value=date;el('modalDateTitle').textContent=date;
+        el('answerMemberId').value=isAdmin?el('globalMemberSelect').value:(ownMember||'');
+        if(el('manualSurveyTitle'))el('manualSurveyTitle').value='';loadDetail();
     }
-
-    function loadSurveyDetail(date) {
-        const memberId = document.getElementById('answerMemberId').value;
-        let url = '/api/survey/detail?date=' + encodeURIComponent(date);
-        if (memberId) {
-            url += '&memberId=' + encodeURIComponent(memberId);
-        }
-
-        fetchJson(url)
-            .then(data => {
-                document.getElementById('modalSurveyTitle').textContent = data.title || '参加アンケート';
-
-                renderNameList('joinList', data['参加']);
-                renderNameList('absentList', data['不参加']);
-                renderNameList('undecidedList', data['未定']);
-                renderNameList('noAnswerList', data['未回答']);
-
-                if (data.myStatus) {
-                    document.getElementById('myAnswerBox').classList.remove('hidden');
-                    document.getElementById('myAnswerStatus').textContent = data.myStatus;
-                    document.getElementById('answerStatus').value = data.myStatus;
-                    document.getElementById('answerComment').value = data.myComment || '';
-                } else {
-                    document.getElementById('answerStatus').value = '参加';
-                    document.getElementById('myAnswerBox').classList.add('hidden');
-                    document.getElementById('myAnswerStatus').textContent = '';
-                    document.getElementById('answerComment').value = '';
-                }
-
-                const modal = document.getElementById('surveyModal');
-                modal.classList.remove('hidden');
-                modal.classList.add('flex');
-            }).catch(showSurveyError);
+    function closeSurveyModal(){if(busy)return;detailSequence++;el('surveyModal').classList.add('hidden');el('surveyModal').classList.remove('flex');}
+    async function save(url,values) {
+        if(busy)return;setBusy(true);message('');
+        try {
+            const params=new URLSearchParams(values);params.set(csrfName,csrfToken);
+            await request(url,{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:params});
+            surveyCalendar.refetchEvents();await backgrounds(localDate(surveyCalendar.view.activeStart),localDate(surveyCalendar.view.activeEnd));
+            await loadDetail();message('保存しました。');
+        } catch(e){message(e.message);} finally {setBusy(false);}
     }
-
-    function closeSurveyModal() {
-        const modal = document.getElementById('surveyModal');
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
+    function submitSurveyAnswer(){
+        const memberId=isAdmin?el('answerMemberId').value:ownMember;
+        if(!memberId){message('回答者を選択してください。');return;}
+        if(!answerEnabled)return;
+        el('globalMemberSelect').value=memberId;
+        save('/survey/answer',{date:el('answerDate').value,memberId,status:el('answerStatus').value,comment:el('answerComment').value});
     }
-
-    function renderNameList(elementId, names) {
-        const ul = document.getElementById(elementId);
-        ul.innerHTML = '';
-
-        if (!names || names.length === 0) {
-            const li = document.createElement('li');
-            li.textContent = 'なし';
-            li.className = 'text-gray-400';
-            ul.appendChild(li);
-            return;
-        }
-
-        names.forEach(name => {
-            const li = document.createElement('li');
-            li.textContent = '・' + name;
-            ul.appendChild(li);
-        });
-    }
-
-    function submitSurveyAnswer() {
-        const date = document.getElementById('answerDate').value;
-        const memberId = document.getElementById('answerMemberId').value;
-        const status = document.getElementById('answerStatus').value;
-        const comment = document.getElementById('answerComment').value;
-
-        if (!memberId) {
-            alert('名前を選択してください');
-            return;
-        }
-
-        const params = new URLSearchParams();
-        params.append('date', date);
-        params.append('memberId', memberId);
-        params.append('status', status);
-        params.append('comment', comment);
-
-        if (csrfParameterName && csrfToken) {
-            params.append(csrfParameterName, csrfToken);
-        }
-
-        fetchJson('/survey/answer', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: params
-        })
-            .then(data => {
-                if (!data.success) {
-                    alert(data.message || '保存に失敗しました');
-                    return;
-                }
-
-                document.getElementById('globalMemberSelect').value = memberId;
-
-                if (surveyCalendar) {
-                    surveyCalendar.refetchEvents();
-                }
-
-                applySurveyDayBackgrounds(
-                    localDate(surveyCalendar.view.activeStart),
-                    localDate(surveyCalendar.view.activeEnd)
-                );
-
-                loadSurveyDetail(date);
-            }).catch(showSurveyError);
-    }
-
-    function createManualSurvey() {
-        const date = document.getElementById('answerDate').value;
-        const title = document.getElementById('manualSurveyTitle').value || '追加アンケート';
-
-        const params = new URLSearchParams();
-        params.append('date', date);
-        params.append('title', title);
-
-        if (csrfParameterName && csrfToken) {
-            params.append(csrfParameterName, csrfToken);
-        }
-
-        fetchJson('/survey/manual', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-            body: params
-        })
-            .then(data => {
-                if (!data.success) {
-                    alert(data.message || '作成に失敗しました');
-                    return;
-                }
-
-                if (surveyCalendar) {
-                    surveyCalendar.refetchEvents();
-                }
-
-                applySurveyDayBackgrounds(
-                    localDate(surveyCalendar.view.activeStart),
-                    localDate(surveyCalendar.view.activeEnd)
-                );
-
-                loadSurveyDetail(date);
-            }).catch(showSurveyError);
-    }
-
-    function localDate(date) {
-        return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0')
-            + '-' + String(date.getDate()).padStart(2, '0');
-    }
-
-    async function fetchJson(url, options) {
-        const response = await fetch(url, options);
-        if (response.status === 401 || response.status === 403) {
-            throw new Error('ログイン状態を確認してください。再ログインが必要な場合があります。');
-        }
-        if (!response.ok) throw new Error('処理に失敗しました。入力内容や通信状態を確認してください。');
-        return response.json();
-    }
-
-    function showSurveyError(error) {
-        alert(error.message || '通信に失敗しました。もう一度お試しください。');
-    }
+    function createManualSurvey(){save('/survey/manual',{date:el('answerDate').value,title:el('manualSurveyTitle').value});}
+    function deleteManualSurvey(){if(confirm('手動アンケートを削除しますか？平日は回答も削除されます。土日祝は手動設定のみを削除し、自動アンケートと回答は残ります。'))save('/survey/manual/delete',{date:el('answerDate').value});}
+    document.addEventListener('DOMContentLoaded',()=>{
+        el('globalMemberSelect').value=selectedMember||'';
+        surveyCalendar=new FullCalendar.Calendar(el('surveyCalendar'),{
+            initialView:'dayGridMonth',locale:'ja',height:'auto',headerToolbar:{left:'prev,next today',center:'title',right:''},
+            events:'/api/survey/events',eventSourceFailure:()=>message('アンケートを取得できませんでした。'),
+            datesSet:info=>backgrounds(info.startStr,info.endStr),dateClick:info=>openSurveyModal(info.dateStr),eventClick:info=>openSurveyModal(info.event.startStr)
+        });surveyCalendar.render();
+        el('answerMemberId').addEventListener('change',loadDetail);
+        document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSurveyModal();});
+    });
 </script>
-
-</section>
-</body>
-</html>
+</section></body></html>

@@ -62,6 +62,7 @@ public class AdminNewsController {
         news.setTitle(form.getTitle());
         news.setContent(form.getContent());
         news.setPublishedAt(form.getPublishedAt());
+        news.setAudience(form.getAudience());
 
         service.save(news);
 
@@ -86,6 +87,7 @@ public class AdminNewsController {
         form.setTitle(news.getTitle());
         form.setContent(news.getContent());
         form.setPublishedAt(news.getPublishedAt());
+        form.setAudience(news.getAudience());
 
         model.addAttribute("newsForm", form);
         model.addAttribute("userSession", session.getAttribute("userSession"));
@@ -117,6 +119,7 @@ public class AdminNewsController {
         news.setTitle(form.getTitle());
         news.setContent(form.getContent());
         news.setPublishedAt(form.getPublishedAt());
+        news.setAudience(form.getAudience());
 
         service.save(news);
 

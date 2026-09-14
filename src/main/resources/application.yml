@@ -20,6 +20,10 @@ spring:
     multipart:
       max-file-size: 5MB
       max-request-size: 6MB
+  flyway:
+    enabled: ${DB_MIGRATIONS_ENABLED:false}
+    baseline-on-migrate: true
+    baseline-version: 0
   jpa:
     hibernate:
       ddl-auto: none

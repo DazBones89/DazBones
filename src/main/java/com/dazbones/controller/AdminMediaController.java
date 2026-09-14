@@ -18,8 +18,8 @@ import java.nio.file.*;
 @Controller
 public class AdminMediaController {
 
-    @Value("${app.upload-dir}")
-    private String uploadDir;
+    private final com.dazbones.service.ImageStorageService images;
+    public AdminMediaController(com.dazbones.service.ImageStorageService images) { this.images = images; }
 
     @GetMapping("/admin/upload/group-photo")
     public String groupPhotoUploadPage(HttpSession session, Model model) {
@@ -40,45 +40,15 @@ public class AdminMediaController {
             return "error/404";
         }
 
-        if (file == null || file.isEmpty()) {
-            redirectAttributes.addFlashAttribute("errorMessage", "ファイルが選択されていません");
-            return "redirect:/admin/upload/group-photo";
-        }
-
-        long max = 5L * 1024 * 1024;
-        if (file.getSize() > max) {
-            redirectAttributes.addFlashAttribute("errorMessage", "ファイルサイズが5MBを超えています");
-            return "redirect:/admin/upload/group-photo";
-        }
-
-        String original = StringUtils.cleanPath(file.getOriginalFilename());
-        String ext = "";
-
-        int dot = original.lastIndexOf('.');
-        if (dot >= 0) {
-            ext = original.substring(dot + 1).toLowerCase();
-        }
-
-        if (!(ext.equals("jpg") || ext.equals("jpeg"))) {
-            redirectAttributes.addFlashAttribute("errorMessage", "対応していない形式です（JPG/JPEGのみ）");
-            return "redirect:/admin/upload/group-photo";
-        }
-
         try {
-            Path dir = Paths.get(uploadDir).toAbsolutePath().normalize();
-            Files.createDirectories(dir);
-
-            Path target = dir.resolve("group-photo.jpg");
-
-            Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
-
+            images.saveGroup(file);
             redirectAttributes.addFlashAttribute("successMessage", "集合写真を更新しました");
-            return "redirect:/admin/upload/group-photo";
-
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         } catch (IOException e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "保存に失敗しました: " + e.getMessage());
-            return "redirect:/admin/upload/group-photo";
+            redirectAttributes.addFlashAttribute("errorMessage", "保存に失敗しました。元の画像は保持されています。再試行してください。");
         }
+        return "redirect:/admin/upload/group-photo";
     }
 
     private UserSession getUserSession(HttpSession session) {

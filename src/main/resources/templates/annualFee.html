@@ -1,0 +1,31 @@
+<!DOCTYPE html><html lang="ja" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: layout(~{::title}, ~{::section})}">
+<head><title>年度別年会費 | DazBones</title></head><body><section class="px-4 py-6 space-y-5">
+<h1 class="text-2xl font-black db-brown">年度別年会費</h1>
+<p class="text-sm text-gray-600">1月〜12月を1年度として管理します。未登録の選手は集計に含みません。</p>
+<p th:if="${successMessage}" th:text="${successMessage}" class="rounded-xl bg-green-50 p-3 text-green-800"></p>
+<ul th:if="${feeErrors}" class="rounded-xl bg-red-50 p-3 text-red-700"><li th:each="e:${feeErrors}" th:text="${e}"></li></ul>
+<form th:action="@{/fee}" method="get" class="flex gap-2">
+<label for="feeYear" class="self-center">年度</label><input id="feeYear" type="number" name="year" min="1900" max="2100" th:value="${year}" class="w-28 rounded-xl border p-2">
+<button class="rounded-xl border p-2">表示</button></form>
+<div class="flex flex-wrap gap-2"><a th:each="y:${years}" th:href="@{/fee(year=${y})}" th:text="${y}+'年度'" class="text-sm underline"></a></div>
+<div class="rounded-xl bg-yellow-50 p-4 space-y-2"><h2 class="font-bold" th:text="${year}+'年度の合計'"></h2>
+<p th:text="'請求：'+${#numbers.formatInteger(totals.amount,1,'COMMA')}+'円'"></p>
+<p th:text="'入金：'+${#numbers.formatInteger(totals.paidAmount,1,'COMMA')}+'円'"></p>
+<p th:text="'未入金：'+${#numbers.formatInteger(totals.unpaidAmount,1,'COMMA')}+'円'"></p></div>
+<div class="rounded-xl bg-gray-50 p-4 space-y-2"><h2 class="font-bold">チーム累計（全年度）</h2>
+<p th:text="'請求：'+${#numbers.formatInteger(teamTotals.amount,1,'COMMA')}+'円'"></p>
+<p th:text="'入金：'+${#numbers.formatInteger(teamTotals.paidAmount,1,'COMMA')}+'円'"></p>
+<p th:text="'未入金：'+${#numbers.formatInteger(teamTotals.unpaidAmount,1,'COMMA')}+'円'"></p></div>
+<p th:if="${players.isEmpty()}" class="text-gray-500">この年度の登録はありません。</p>
+<form th:each="p:${players}" th:action="@{/fee/update}" method="post" class="rounded-xl border p-4 space-y-3"
+      th:with="row=${feeMap[p.id]},draft=${failedForm != null and failedForm.playerId == p.id ? failedForm : null}">
+<div class="flex justify-between"><h2 class="font-bold" th:text="${p.name} + (${p.deleteFlg == 1} ? '（退部）' : '')"></h2>
+<a th:href="@{/fee/player/{id}(id=${p.id})}" class="text-sm underline">個人累計・履歴</a></div>
+<p th:if="${row == null}" class="text-sm text-gray-500">未登録</p>
+<input type="hidden" name="playerId" th:value="${p.id}"><input type="hidden" name="fiscalYear" th:value="${year}">
+<input type="hidden" name="version" th:value="${draft != null ? draft.version : (row != null ? row.version : null)}">
+<label class="block">請求額（円）<input type="number" name="amount" required min="0" max="1000000000" th:value="${draft != null ? draft.amount : (row != null ? row.amount : 0)}" class="block w-full rounded-xl border p-3"></label>
+<label class="block">入金額（円）<input type="number" name="paidAmount" required min="0" max="1000000000" th:value="${draft != null ? draft.paidAmount : (row != null ? row.paidAmount : 0)}" class="block w-full rounded-xl border p-3"></label>
+<label class="block">メモ<textarea name="comment" maxlength="1000" th:text="${draft != null ? draft.comment : (row != null ? row.comment : '')}" class="block w-full rounded-xl border p-3"></textarea></label>
+<button class="w-full rounded-xl db-bg-brown p-3 font-bold text-white">保存する</button></form>
+</section></body></html>

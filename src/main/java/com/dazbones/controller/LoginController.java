@@ -21,13 +21,13 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 public class LoginController {
-    private final AuthenticationManager authenticationManager;
+    private final com.dazbones.service.CredentialService credentials;
     private final SecurityContextRepository contexts;
     private final CsrfTokenRepository csrfTokens;
 
-    public LoginController(AuthenticationManager authenticationManager, SecurityContextRepository contexts,
+    public LoginController(com.dazbones.service.CredentialService credentials, SecurityContextRepository contexts,
                            CsrfTokenRepository csrfTokens) {
-        this.authenticationManager = authenticationManager;
+        this.credentials = credentials;
         this.contexts = contexts;
         this.csrfTokens = csrfTokens;
     }
@@ -39,27 +39,20 @@ public class LoginController {
     }
 
     @PostMapping("/login")
-    public String login(@RequestParam("code") String code, HttpServletRequest request,
+    public String login(@RequestParam("code") String code, @RequestParam(required=false) String loginId, HttpServletRequest request,
                         HttpServletResponse response, RedirectAttributes redirectAttributes) {
-        if (!code.isBlank() && code.getBytes(java.nio.charset.StandardCharsets.UTF_8).length <= 72) {
-            for (String role : new String[]{"admin", "editor"}) {
-                Authentication authentication;
-                try {
-                    authentication = authenticationManager.authenticate(
-                            UsernamePasswordAuthenticationToken.unauthenticated(role, code));
-                } catch (AuthenticationException ignored) {
-                    continue;
-                }
-                HttpSession previous = request.getSession(false);
-                if (previous != null) previous.invalidate();
-                request.getSession(true).setAttribute("userSession", new UserSession(role));
-                SecurityContext context = SecurityContextHolder.createEmptyContext();
-                context.setAuthentication(authentication);
-                SecurityContextHolder.setContext(context);
-                contexts.saveContext(context, request, response);
-                csrfTokens.saveToken(null, request, response);
-                return "redirect:/main";
-            }
+        UserSession user = credentials.authenticate(loginId, code);
+        if (user != null) {
+            HttpSession previous = request.getSession(false);
+            if (previous != null) previous.invalidate();
+            request.getSession(true).setAttribute("userSession", user);
+            SecurityContext context = SecurityContextHolder.createEmptyContext();
+            context.setAuthentication(UsernamePasswordAuthenticationToken.authenticated(user.getLoginId(), null,
+                    java.util.List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_" + user.getRole().toUpperCase(java.util.Locale.ROOT)))));
+            SecurityContextHolder.setContext(context);
+            contexts.saveContext(context, request, response);
+            csrfTokens.saveToken(null, request, response);
+            return "redirect:/main";
         }
         redirectAttributes.addFlashAttribute("errorMessage", "ログインコードが違います");
         return "redirect:/login";

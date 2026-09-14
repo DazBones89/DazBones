@@ -7,6 +7,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 public interface NewsRepository extends JpaRepository<News, Long> {
+    List<News> findByAudienceAndPublishedAtLessThanEqualOrderByPublishedAtDesc(String audience, LocalDateTime now);
+    List<News> findTop3ByAudienceAndPublishedAtLessThanEqualOrderByPublishedAtDesc(String audience, LocalDateTime now);
 
     List<News> findTop3ByPublishedAtLessThanEqualOrderByPublishedAtDesc(LocalDateTime now);
 

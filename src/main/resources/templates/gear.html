@@ -9,6 +9,8 @@
 
 <body>
 <section class="px-4 py-6">
+    <p th:if="${errorMessage}" th:text="${errorMessage}" class="mb-4 rounded-xl bg-red-50 p-3 text-red-700"></p>
+    <p th:if="${successMessage}" th:text="${successMessage}" class="mb-4 rounded-xl bg-green-50 p-3 text-green-800"></p>
 
     <div class="mb-5">
         <h1 class="text-2xl font-black db-brown">道具管理</h1>
@@ -30,7 +32,7 @@
                 <label class="mb-1 block text-sm font-bold db-brown">道具名</label>
                 <input type="text"
                        name="name"
-                       required
+                       th:value="${draft != null ? draft.name : ''}" required
                        placeholder="例：試合球、バット、ヘルメット"
                        class="w-full rounded-xl border px-4 py-3">
             </div>
@@ -40,8 +42,8 @@
                 <select name="ownerId" class="w-full rounded-xl border px-4 py-3">
                     <option value="">未設定</option>
                     <option th:each="p : ${players}"
-                            th:value="${p.id}"
-                            th:text="${p.name}">
+                            th:value="${p.id}" th:disabled="${p.deleteFlg == 1}" th:selected="${draft != null and draft.ownerId == p.id}"
+                            th:text="${p.name} + (${p.deleteFlg == 1} ? '（退部）' : '')">
                         山田 太郎
                     </option>
                 </select>
@@ -50,7 +52,7 @@
             <div>
                 <label class="mb-1 block text-sm font-bold db-brown">コメント</label>
                 <textarea name="comment"
-                          rows="3"
+                          rows="3" th:text="${draft != null ? draft.comment : ''}"
                           placeholder="保管場所・状態など"
                           class="w-full rounded-xl border px-4 py-3"></textarea>
             </div>
@@ -98,7 +100,7 @@
                         <option value="">未設定</option>
                         <option th:each="p : ${players}"
                                 th:value="${p.id}"
-                                th:text="${p.name}"
+                                th:text="${p.name} + (${p.deleteFlg == 1} ? '（退部）' : '')"
                                 th:selected="${g.ownerId != null and g.ownerId == p.id}">
                             山田 太郎
                         </option>
