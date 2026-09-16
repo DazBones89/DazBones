@@ -6,6 +6,11 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "survey_members")
 public class SurveyMember {
+    @Column(name = "player_id", unique = true)
+    private Long playerId;
+
+    public Long getPlayerId() { return playerId; }
+    public void setPlayerId(Long playerId) { this.playerId = playerId; }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

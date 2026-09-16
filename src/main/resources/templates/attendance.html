@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: layout(~{::title}, ~{::section})}">
+<head><title>出席アンケート | DazBones</title></head>
+<body><section class="px-4 py-6">
+    <nav aria-label="アンケートの種類" class="mb-5 grid grid-cols-2 gap-2 text-center text-sm font-bold">
+        <a th:href="@{/survey}" class="rounded-xl border px-3 py-3">その他アンケート</a>
+        <a th:href="@{/survey/attendance}" aria-current="page" class="rounded-xl db-bg-brown px-3 py-3 text-white">出席アンケート</a>
+    </nav>
+    <h1 class="text-2xl font-black db-brown">出席アンケート</h1>
+    <p class="my-3 text-sm text-gray-600">選手名簿を使って、各月の土日祝日に○・△とメモで回答できます。祝日は祝日管理の登録内容を使用します。</p>
+    <a th:if="${userSession.isAdmin()}" th:href="@{/admin/holidays}" class="text-sm underline">祝日の登録・確認へ</a>
+    <p th:if="${successMessage}" th:text="${successMessage}" role="status" class="my-3 rounded-xl bg-green-50 p-3 text-green-800"></p>
+    <p th:if="${errorMessage}" th:text="${errorMessage}" role="alert" class="my-3 rounded-xl bg-red-50 p-3 text-red-800"></p>
+    <form th:action="@{/survey/attendance}" method="get" class="my-4 space-y-3">
+        <label for="attendanceMonth" class="block font-bold">対象月</label>
+        <div class="flex gap-2"><input id="attendanceMonth" type="month" name="month" th:value="${month}" min="1900-01" max="2100-12" required class="min-w-0 flex-1 rounded-xl border p-3"><button class="rounded-xl border px-4">表示</button></div>
+        <div th:if="${userSession.isAdmin()}">
+            <label for="attendancePlayer" class="block font-bold">回答する選手（管理者の代理回答）</label>
+            <select id="attendancePlayer" name="playerId" class="mt-2 w-full rounded-xl border p-3">
+                <option th:each="player : ${players}" th:value="${player.id}" th:text="${player.name}" th:selected="${player.id == selectedPlayer}"></option>
+            </select>
+            <p class="mt-1 text-xs text-gray-500">選手を変更したら「表示」を押してください。</p>
+        </div>
+    </form>
+    <div class="my-4 flex justify-between">
+        <a th:if="${previousMonth != null}" th:href="@{/survey/attendance(month=${previousMonth},playerId=${selectedPlayer})}" class="rounded-xl border p-2">前の月</a>
+        <a th:if="${nextMonth != null}" th:href="@{/survey/attendance(month=${nextMonth},playerId=${selectedPlayer})}" class="rounded-xl border p-2">次の月</a>
+    </div>
+    <p th:if="${players.isEmpty()}" class="my-4 rounded-xl bg-gray-50 p-3">在籍中の選手がいません。選手一覧から登録してください。</p>
+    <p th:if="${!editable and !players.isEmpty()}" class="my-4 rounded-xl bg-yellow-50 p-3 text-sm">閲覧のみ可能です。本人用ログインに選手を紐付けると回答できます。管理者に設定を依頼してください。</p>
+    <p th:if="${editable}" class="mb-3 font-bold"><span th:each="p : ${players}" th:if="${p.id == selectedPlayer}" th:text="${p.name}"></span> さんの回答</p>
+    <article th:each="date : ${dates}" th:id="${'day-' + date.toString()}" th:with="answer=${selectedAnswers.get(date)},dayAnswers=${allAnswers.get(date)},draft=${draftDate != null and draftDate == date}" class="mb-4 rounded-2xl border bg-white p-4 shadow-sm">
+        <h2 th:text="${#temporals.format(date, 'M月d日（E）')}" class="mb-3 text-lg font-bold"></h2>
+        <p th:if="${draft and errorMessage != null}" th:text="${errorMessage}" role="alert" class="mb-3 text-sm text-red-800"></p>
+        <form th:if="${editable}" th:action="@{/survey/attendance/answer}" method="post" data-attendance-form class="space-y-3">
+            <input type="hidden" name="playerId" th:value="${selectedPlayer}">
+            <input type="hidden" name="date" th:value="${date.toString()}">
+            <input type="hidden" name="version" th:value="${draft ? draftVersion : (answer == null ? -1 : answer.version)}">
+            <label th:for="${'status-' + date.toString()}" class="block text-sm font-bold">回答</label>
+            <select th:id="${'status-' + date.toString()}" name="status" required class="w-full rounded-xl border p-3" th:with="value=${draft ? draftStatus : (answer == null ? '' : answer.status)}">
+                <option value="" th:selected="${value == ''}">未回答</option>
+                <option value="○" th:selected="${value == '○'}">○</option>
+                <option value="△" th:selected="${value == '△'}">△</option>
+            </select>
+            <label th:for="${'memo-' + date.toString()}" class="block text-sm font-bold">メモ（500文字以内）</label>
+            <textarea th:id="${'memo-' + date.toString()}" name="memo" maxlength="500" rows="2" th:text="${draft ? draftMemo : (answer == null ? '' : answer.memo)}" class="w-full rounded-xl border p-3"></textarea>
+            <button type="submit" class="w-full rounded-xl db-bg-brown p-3 font-bold text-white">保存</button>
+        </form>
+        <details class="mt-3"><summary class="cursor-pointer text-sm font-bold">選手全員の回答</summary>
+            <ul class="mt-2 divide-y text-sm"><li th:each="player : ${players}" th:with="entry=${dayAnswers == null ? null : dayAnswers.get(player.id)}" class="py-2">
+                <span th:text="${player.name}" class="font-bold"></span>：<span th:text="${entry == null ? '未回答' : entry.status}"></span>
+                <p th:if="${entry != null and !entry.memo.isEmpty()}" th:text="${entry.memo}" class="mt-1 whitespace-pre-wrap break-words text-gray-600"></p>
+            </li></ul>
+        </details>
+    </article>
+    <details th:if="${userSession.isAdmin()}" class="mt-6 rounded-xl border p-4">
+        <summary class="cursor-pointer font-bold">本人ログインと選手の紐付け（管理者）</summary>
+        <p class="my-3 text-sm">名前の自動照合は行いません。回答者ごとに本人の選手を設定してください。1人の選手には1つの回答者ログインを紐付けられます。削除済み回答者も紐付けの解除ができます。</p>
+        <a th:href="@{/admin/survey-members}" class="text-sm underline">回答者の登録・コード発行へ</a>
+        <form th:each="member : ${members}" th:action="@{/admin/attendance/bind}" method="post" class="mt-4 space-y-2 border-t pt-3">
+            <input type="hidden" name="memberId" th:value="${member.id}">
+            <label th:for="${'member-player-' + member.id}" th:text="${member.name + (member.deleteFlg == 1 ? '（削除済み）' : '')}" class="block font-bold"></label>
+            <p th:if="${member.playerId != null}" th:text="${'現在の紐付け：選手ID ' + member.playerId}" class="text-xs text-gray-500"></p>
+            <select th:id="${'member-player-' + member.id}" name="playerId" class="w-full rounded-xl border p-2">
+                <option value="">紐付けなし／解除</option>
+                <option th:each="player : ${players}" th:value="${player.id}" th:text="${player.name}" th:selected="${player.id == member.playerId}" th:disabled="${member.deleteFlg == 1}"></option>
+            </select>
+            <button class="rounded-xl border p-2">紐付けを保存</button>
+        </form>
+    </details>
+    <script>
+        document.querySelectorAll('[data-attendance-form]').forEach(form => {
+            form.addEventListener('submit', () => { const button = form.querySelector('button[type="submit"]'); button.disabled = true; button.textContent = '保存中…'; });
+        });
+        window.addEventListener('pageshow', () => document.querySelectorAll('[data-attendance-form] button[type="submit"]').forEach(button => { button.disabled = false; button.textContent = '保存'; }));
+    </script>
+</section></body></html>

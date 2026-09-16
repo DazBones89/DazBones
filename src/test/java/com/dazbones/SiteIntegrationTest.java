@@ -34,6 +34,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class SiteIntegrationTest {
     @Autowired MockMvc mvc;
+    @Autowired AttendanceAnswerRepository attendanceAnswers;
+    @Autowired com.dazbones.service.AttendanceService attendanceService;
     @Autowired PlayerRepository players;
     @Autowired ScheduleRepository schedules;
     @Autowired NewsRepository news;
@@ -55,6 +57,7 @@ class SiteIntegrationTest {
 
     @BeforeEach
     void cleanDatabase() {
+        attendanceAnswers.deleteAll();
         annualFees.deleteAll(); gears.deleteAll(); holidays.deleteAll();
         credentials.deleteAll();securityStates.deleteAll();credentialService.initialize();
         answers.deleteAll();
@@ -64,6 +67,81 @@ class SiteIntegrationTest {
         players.deleteAll();
         schedules.deleteAll();
         news.deleteAll();
+    }
+
+    @Test
+    void attendanceShowsOnlySortedWeekendsAndRegisteredHolidays() throws Exception {
+        holidayService.addHoliday(LocalDate.of(2026, 9, 21), "祝日");
+        assertThat(attendanceService.dates(java.time.YearMonth.of(2026, 9))).containsExactly(
+                LocalDate.of(2026,9,5), LocalDate.of(2026,9,6), LocalDate.of(2026,9,12), LocalDate.of(2026,9,13),
+                LocalDate.of(2026,9,19), LocalDate.of(2026,9,20), LocalDate.of(2026,9,21), LocalDate.of(2026,9,26), LocalDate.of(2026,9,27));
+        var admin = login("admin");
+        mvc.perform(get("/survey").session(admin)).andExpect(content().string(containsString("その他アンケート")))
+                .andExpect(content().string(containsString("/survey/attendance")));
+        mvc.perform(get("/survey/attendance").session(admin).param("month", "2026-09"))
+                .andExpect(status().isOk()).andExpect(content().string(containsString("在籍中の選手がいません")));
+        mvc.perform(get("/survey/attendance")).andExpect(redirectedUrl("/login"));
+        mvc.perform(get("/survey/attendance").session(admin).param("month", "bad")).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void attendanceMemberCanOnlyAnswerLinkedPlayerAndAdminCanProxy() throws Exception {
+        var a = player("出席選手A", 1, 1, "投手"); var b = player("出席選手B", 2, 1, "捕手");
+        var m = member("本人"); m.setPlayerId(a.getId()); members.save(m);
+        var memberSession = memberLogin(m.getId(), credentialService.issueMemberCode(m.getId()));
+        mvc.perform(post("/survey/attendance/answer").session(memberSession).with(csrf())
+                .param("playerId", a.getId().toString()).param("date", "2026-09-19").param("status", "○")
+                .param("memo", "午前のみ").param("version", "-1")).andExpect(status().is3xxRedirection());
+        assertThat(attendanceAnswers.findByPlayerIdAndTargetDate(a.getId(), LocalDate.of(2026,9,19)).orElseThrow().getMemo()).isEqualTo("午前のみ");
+        mvc.perform(get("/survey/attendance").session(memberSession).param("month", "2026-09").param("playerId", b.getId().toString()))
+                .andExpect(status().isOk()).andExpect(model().attribute("selectedPlayer", a.getId()));
+        mvc.perform(post("/survey/attendance/answer").session(memberSession).with(csrf())
+                .param("playerId", b.getId().toString()).param("date", "2026-09-19").param("status", "△").param("version", "-1"))
+                .andExpect(status().isForbidden());
+        var admin = login("admin");
+        mvc.perform(post("/survey/attendance/answer").session(admin).with(csrf())
+                .param("playerId", b.getId().toString()).param("date", "2026-09-19").param("status", "△").param("version", "-1"))
+                .andExpect(status().is3xxRedirection());
+        mvc.perform(get("/survey/attendance").session(admin).param("month", "2026-09"))
+                .andExpect(status().isOk()).andExpect(content().string(containsString("午前のみ")))
+                .andExpect(content().string(containsString("name=\"date\" value=\"2026-09-19\"")))
+                .andExpect(content().string(containsString("id=\"day-2026-09-19\"")));
+        assertThat(attendanceAnswers.count()).isEqualTo(2);
+    }
+
+    @Test
+    void attendanceRejectsWeekdaysInvalidAnswersAndStaleUpdates() throws Exception {
+        var p = player("検証選手", 1, 1, "投手");
+        var session = login("admin"); var user = (UserSession)session.getAttribute("userSession");
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> attendanceService.save(user,p.getId(),LocalDate.of(2026,9,16),"○","",-1L)).isInstanceOf(IllegalArgumentException.class);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> attendanceService.save(user,p.getId(),LocalDate.of(2026,9,19),"×","",-1L)).isInstanceOf(IllegalArgumentException.class);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> attendanceService.save(user,p.getId(),LocalDate.of(2026,9,19),"○","a".repeat(501),-1L)).isInstanceOf(IllegalArgumentException.class);
+        attendanceService.save(user,p.getId(),LocalDate.of(2026,9,19),"○","",-1L);
+        mvc.perform(post("/survey/attendance/answer").session(session).with(csrf())
+                .param("playerId",p.getId().toString()).param("date","2026-09-19").param("status","△").param("memo","再入力").param("version","-1"))
+                .andExpect(flash().attributeExists("errorMessage")).andExpect(flash().attribute("draftMemo","再入力"));
+        assertThat(attendanceAnswers.findAll().get(0).getStatus()).isEqualTo("○");
+        mvc.perform(post("/survey/attendance/answer").session(session)
+                .param("playerId",p.getId().toString()).param("date","2026-09-19").param("status","○").param("version","0"))
+                .andExpect(status().isForbidden());
+        p.setDeleteFlg(1);players.save(p);
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> attendanceService.save(user,p.getId(),LocalDate.of(2026,9,19),"○","",0L)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void attendanceBindingIsAdminOnlyAndUniqueAndCanBeClearedAfterDeletion() throws Exception {
+        var p = player("紐付け選手",1,1,"投手"); var m = member("紐付け本人"); var other = member("別本人");
+        var admin = login("admin");
+        mvc.perform(post("/admin/attendance/bind").session(login("editor")).with(csrf())
+                .param("memberId",m.getId().toString()).param("playerId",p.getId().toString())).andExpect(status().isForbidden());
+        mvc.perform(post("/admin/attendance/bind").session(admin).with(csrf())
+                .param("memberId",m.getId().toString()).param("playerId",p.getId().toString())).andExpect(flash().attributeExists("successMessage"));
+        mvc.perform(post("/admin/attendance/bind").session(admin).with(csrf())
+                .param("memberId",other.getId().toString()).param("playerId",p.getId().toString())).andExpect(flash().attributeExists("errorMessage"));
+        memberService.deleteMember(m.getId());
+        mvc.perform(post("/admin/attendance/bind").session(admin).with(csrf()).param("memberId",m.getId().toString()))
+                .andExpect(flash().attributeExists("successMessage"));
+        assertThat(members.findById(m.getId()).orElseThrow().getPlayerId()).isNull();
     }
 
     private MockHttpSession login(String role) throws Exception {

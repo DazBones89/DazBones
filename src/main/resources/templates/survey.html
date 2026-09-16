@@ -7,6 +7,10 @@
 
 <body>
 <section class="px-4 py-6">
+    <nav aria-label="アンケートの種類" class="mb-5 grid grid-cols-2 gap-2 text-center text-sm font-bold">
+        <a th:href="@{/survey}" aria-current="page" class="rounded-xl db-bg-brown px-3 py-3 text-white">その他アンケート</a>
+        <a th:href="@{/survey/attendance}" class="rounded-xl border px-3 py-3">出席アンケート</a>
+    </nav>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
 
     <style>
