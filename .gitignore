@@ -1,6 +1,9 @@
 # Gradle
 .gradle/
 build/
+node_modules/
+deploy/.env
+deploy/backups/
 
 # IntelliJ
 .idea/

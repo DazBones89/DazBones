@@ -36,6 +36,11 @@ public class GlobalExceptionHandler {
         response.setStatus(413);return new ModelAndView("error/413");
     }
 
+    @ExceptionHandler({org.springframework.dao.OptimisticLockingFailureException.class, org.springframework.dao.DataIntegrityViolationException.class})
+    public Object handleConflict(Exception e, HttpServletRequest request, HttpServletResponse response) {
+        return error(409, request, response);
+    }
+
     @ExceptionHandler(Exception.class)
     public Object handleException(Exception e, HttpServletRequest request, HttpServletResponse response) {
         log.error("Request failed: {} {}", request.getMethod(), request.getRequestURI(), e);
@@ -46,8 +51,8 @@ public class GlobalExceptionHandler {
         response.setStatus(status);
         if (request.getRequestURI().startsWith("/api/") || request.getRequestURI().startsWith("/survey/")) {
             return ResponseEntity.status(status).body(java.util.Map.of("success", false, "message",
-                    status == 400 ? "入力内容を確認してください" : "処理に失敗しました"));
+                    status == 400 ? "入力内容を確認してください" : status == 409 ? "他の画面で更新されました。再読み込みして確認してください" : "処理に失敗しました"));
         }
-        return new ModelAndView("error/" + (status == 400 ? "400" : status == 404 ? "404" : status == 403 ? "403" : "500"));
+        return new ModelAndView("error/" + (status == 400 ? "400" : status == 404 ? "404" : status == 403 ? "403" : status == 409 ? "409" : "500"));
     }
 }

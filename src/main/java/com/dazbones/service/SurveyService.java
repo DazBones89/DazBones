@@ -19,22 +19,25 @@ public class SurveyService {
     private final SurveyAnswerRepository answerRepository;
     private final SurveyMemberRepository memberRepository;
     private final HolidayService holidayService;
+    private final com.dazbones.repository.SecurityStateRepository states;
 
     public SurveyService(SurveyEventRepository eventRepository,
                          SurveyAnswerRepository answerRepository,
                          SurveyMemberRepository memberRepository,
-                         HolidayService holidayService) {
+                         HolidayService holidayService, com.dazbones.repository.SecurityStateRepository states) {
         this.eventRepository = eventRepository;
         this.answerRepository = answerRepository;
         this.memberRepository = memberRepository;
-        this.holidayService = holidayService;
+        this.holidayService = holidayService; this.states = states;
     }
 
     public List<SurveyMember> getActiveMembers() {
         return memberRepository.findByDeleteFlgOrderByNameAsc(0);
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public SurveyEvent getOrCreateEvent(LocalDate date, boolean manualFlg) {
+        states.lockState();
         return eventRepository.findByTargetDate(date)
                 .orElseGet(() -> {
                     SurveyEvent event = new SurveyEvent();
@@ -47,6 +50,8 @@ public class SurveyService {
 
     @org.springframework.transaction.annotation.Transactional
     public void createManualSurvey(LocalDate date, String title) {
+        states.lockState();
+        if (eventRepository.findByTargetDate(date).filter(e -> Boolean.TRUE.equals(e.getManualFlg())).isPresent()) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT);
         if(title != null && title.trim().length()>100) throw new IllegalArgumentException("タイトルは100文字以内です");
         SurveyEvent event = getOrCreateEvent(date, true);
         event.setManualFlg(true);
@@ -56,6 +61,12 @@ public class SurveyService {
 
     @org.springframework.transaction.annotation.Transactional
     public void saveAnswer(LocalDate date, Long memberId, String status, String comment) {
+        saveAnswer(date, memberId, status, comment, null);
+    }
+
+    @org.springframework.transaction.annotation.Transactional
+    public void saveAnswer(LocalDate date, Long memberId, String status, String comment, Long version) {
+        states.lockState();
         SurveyMember member = memberRepository.findById(memberId).orElse(null);
         SurveyEvent existing = eventRepository.findByTargetDate(date).orElse(null);
         boolean target = isWeekend(date) || holidayService.isHoliday(date)
@@ -71,42 +82,48 @@ public class SurveyService {
                 .findBySurveyEventIdAndSurveyMemberId(event.getId(), memberId)
                 .orElse(new SurveyAnswer());
 
+        if (version != null && !Objects.equals(version, answer.getId() == null ? -1L : answer.getVersion()))
+            throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT);
         answer.setSurveyEventId(event.getId());
         answer.setSurveyMemberId(memberId);
         answer.setAnswerStatus(status);
         answer.setComment(comment);
 
-        answerRepository.save(answer);
+        answerRepository.saveAndFlush(answer);
     }
 
     public Map<String, Object> getSummary(LocalDate date) {
-        SurveyEvent event = eventRepository.findByTargetDate(date).orElse(null);
-        boolean autoTarget = isWeekend(date) || holidayService.isHoliday(date);
-        boolean manual = event != null && Boolean.TRUE.equals(event.getManualFlg());
+        return getSummaries(date, date.plusDays(1)).get(date);
+    }
 
-        Map<String, Object> detail = getDetail(date, null);
-        long join = ((List<?>) detail.get("参加")).size();
-        long absent = ((List<?>) detail.get("不参加")).size();
-        long undecided = ((List<?>) detail.get("未定")).size();
-        long noAnswer = ((List<?>) detail.get("未回答")).size();
-
-        Map<String, Object> result = new HashMap<>();
-        result.put("title", event != null ? event.getTitle() : (autoTarget ? "参加アンケート" : ""));
-        result.put("参加", join);
-        result.put("不参加", absent);
-        result.put("未定", undecided);
-        result.put("未回答", noAnswer);
-
-        if (autoTarget && manual) {
-            result.put("type", "mixed");
-        } else if (autoTarget) {
-            result.put("type", "auto");
-        } else if (manual) {
-            result.put("type", "manual");
-        } else {
-            result.put("type", "none");
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public Map<LocalDate, Map<String, Object>> getSummaries(LocalDate start, LocalDate end) {
+        var events = eventRepository.findByTargetDateGreaterThanEqualAndTargetDateLessThan(start, end);
+        Set<Long> active = new HashSet<>();
+        getActiveMembers().forEach(m -> active.add(m.getId()));
+        Set<LocalDate> holidays = new HashSet<>();
+        holidayService.getAll().forEach(h -> holidays.add(h.getHolidayDate()));
+        Map<LocalDate, SurveyEvent> byDate = new HashMap<>();
+        events.forEach(e -> byDate.put(e.getTargetDate(), e));
+        Map<Long, Map<String, Long>> counts = new HashMap<>();
+        if (!events.isEmpty()) for (var answer : answerRepository.findBySurveyEventIdIn(events.stream().map(SurveyEvent::getId).toList())) {
+            if (active.contains(answer.getSurveyMemberId()) && List.of("参加", "不参加", "未定").contains(answer.getAnswerStatus()))
+                counts.computeIfAbsent(answer.getSurveyEventId(), k -> new HashMap<>()).merge(answer.getAnswerStatus(), 1L, Long::sum);
         }
-
+        Map<LocalDate, Map<String, Object>> result = new LinkedHashMap<>();
+        for (LocalDate day = start; day.isBefore(end); day = day.plusDays(1)) {
+            SurveyEvent event = byDate.get(day);
+            boolean auto = isWeekend(day) || holidays.contains(day);
+            boolean manual = event != null && Boolean.TRUE.equals(event.getManualFlg());
+            Map<String, Long> count = event == null ? Map.of() : counts.getOrDefault(event.getId(), Map.of());
+            Map<String, Object> summary = new HashMap<>();
+            summary.put("title", event != null ? event.getTitle() : auto ? "参加アンケート" : "");
+            long answered = 0;
+            for (String status : List.of("参加", "不参加", "未定")) { long n = count.getOrDefault(status, 0L); summary.put(status, n); answered += n; }
+            summary.put("未回答", Math.max(0L, active.size() - answered));
+            summary.put("type", auto ? manual ? "mixed" : "auto" : manual ? "manual" : "none");
+            result.put(day, summary);
+        }
         return result;
     }
 
@@ -178,6 +195,7 @@ public class SurveyService {
         result.put("不参加", absentList);
         result.put("未定", undecidedList);
         result.put("未回答", noAnswerList);
+        result.put("myVersion", answerMap.containsKey(selectedMemberId) ? answerMap.get(selectedMemberId).getVersion() : -1L);
         result.put("myStatus", myStatus);
         result.put("myComment", myComment);
         result.put("manual", event != null && Boolean.TRUE.equals(event.getManualFlg()));
@@ -188,6 +206,7 @@ public class SurveyService {
 
     @org.springframework.transaction.annotation.Transactional
     public void deleteManual(LocalDate date) {
+        states.lockState();
         SurveyEvent event=eventRepository.findByTargetDate(date).orElseThrow(()->new IllegalArgumentException("アンケートが見つかりません"));
         if(!Boolean.TRUE.equals(event.getManualFlg())) throw new IllegalArgumentException("手動アンケートではありません");
         if(isWeekend(date)||holidayService.isHoliday(date)) {

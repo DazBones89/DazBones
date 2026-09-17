@@ -8,6 +8,9 @@ import java.time.LocalTime;
 @Entity
 @Table(name = "schedules")
 public class Schedule {
+    @Version private Long version;
+    public Long getVersion() { return version; }
+
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

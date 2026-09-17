@@ -24,7 +24,15 @@ app.auth.editor-code=YOUR_EDITOR_CODE
 
 ローカル設定ファイルを置かない環境では `DB_URL`、`DB_USERNAME`、`DB_PASSWORD`、`ADMIN_CODE`、`EDITOR_CODE`、必要に応じて `PORT`、`UPLOAD_DIR` を環境変数で設定できます。`config/local.properties` がある場合、そのファイルの同名設定が優先されます。
 
-既存DBへの今回の移行は、バックアップ後に `./gradlew.bat bootRun --args="--spring.flyway.enabled=true"` で実行します。通常起動では移行は無効です。ローカルDBには実行済みです。空のDBを構築する初期DDLは含まれていません。詳しくは `docs/phase2-implementation.md` を参照してください。
+DB移行は、バックアップ後に `./gradlew.bat bootRun --args="--spring.flyway.enabled=true"` で実行します。通常のローカル起動では移行は無効です。V0に空DB用の初期スキーマ、V1以降に差分移行を含みます。既存のbaseline 0環境ではV0は実行されません。ローカルDBはV3まで適用済みです。
+
+## 公開用Docker構成・画面資産
+
+公開環境の起動、HTTPS、バックアップ・復元は [運用手順](docs/deployment.md) を参照してください。公開先は未定で、実サーバーへの公開は行っていません。
+
+CSSとFullCalendarはローカル配信します。テンプレートやスタイルを変更した際は `npm ci --ignore-scripts`、`npm run build` で資産を再生成してください。生成物はGit管理しているため、通常のGradle起動にNode.jsは不要です。
+
+今回の①②③の変更と検証結果は [実装メモ](docs/phase3-implementation.md) にまとめています。
 
 ## テスト
 

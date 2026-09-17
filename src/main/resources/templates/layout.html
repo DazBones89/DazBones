@@ -8,48 +8,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title th:replace="${pageTitle}">DazBones</title>
 
-    <script src="https://cdn.tailwindcss.com"></script>
-
-    <style>
-        :root {
-            --db-brown: #3b2416;
-            --db-gold: #c69214;
-            --db-bg: #f8f6f2;
-        }
-
-        body {
-            background: var(--db-bg);
-        }
-
-        .db-safe-bottom {
-            padding-bottom: 88px;
-        }
-
-        .db-brown {
-            color: var(--db-brown);
-        }
-
-        .db-gold {
-            color: var(--db-gold);
-        }
-
-        .db-bg-brown {
-            background-color: var(--db-brown);
-        }
-
-        .db-bg-gold {
-            background-color: var(--db-gold);
-        }
-
-        .db-hero-shadow {
-            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
-        }
-    </style>
+    <link rel="stylesheet" th:href="@{/css/site.css}">
+    <script th:src="@{/js/site.js}" defer></script>
 </head>
 
 <body class="min-h-screen text-gray-800">
+<a href="#mainContent" class="db-skip">本文へ移動</a>
 
-<div class="mx-auto min-h-screen max-w-[480px] bg-white shadow-xl">
+<div class="db-shell mx-auto min-h-screen bg-white shadow-xl">
 
     <!-- ヘッダー -->
     <header class="sticky top-0 z-40 border-b border-gray-100 bg-white/95 backdrop-blur">
@@ -61,7 +27,7 @@
 
             <button type="button"
                     class="flex flex-col items-center gap-1 db-brown"
-                    onclick="document.getElementById('mobileMenu').classList.toggle('hidden')">
+                    id="menuToggle" aria-controls="mobileMenu" aria-expanded="false">
                 <span class="text-3xl leading-none">☰</span>
                 <span class="text-xs font-bold">メニュー</span>
             </button>
@@ -114,6 +80,7 @@
                 <div class="grid grid-cols-1 gap-3 text-sm font-bold">
                     <a th:href="@{/admin/news}" class="rounded-xl border px-4 py-3 text-center">お知らせ管理</a>
                     <a th:href="@{/admin/upload/group-photo}" class="rounded-xl border px-4 py-3 text-center">集合写真アップロード</a>
+                    <a th:href="@{/admin/audit}" class="rounded-xl border px-4 py-3 text-center">操作履歴</a>
                     <a th:href="@{/admin/code}" class="rounded-xl border px-4 py-3 text-center">管理者コード変更</a>
                     <a th:href="@{/admin/holidays}" class="rounded-xl border px-4 py-3 text-center">祝日管理</a>
                 </div>
@@ -122,15 +89,15 @@
     </header>
 
     <!-- ページ本文 -->
-    <main class="db-safe-bottom">
+    <main id="mainContent" tabindex="-1" class="db-safe-bottom">
         <th:block th:replace="${content}"></th:block>
     </main>
 
     <!-- 下部固定ナビ -->
-    <nav class="fixed bottom-0 left-1/2 z-50 w-full max-w-[480px] -translate-x-1/2 border-t border-gray-200 bg-white/95 backdrop-blur">
+    <nav class="db-shell db-bottom-nav fixed bottom-0 left-1/2 z-50 w-full -translate-x-1/2 border-t border-gray-200 bg-white/95 backdrop-blur">
         <div class="grid grid-cols-4 text-xs font-bold">
 
-            <a th:href="@{/}" class="flex flex-col items-center gap-1 py-3 db-gold">
+            <a th:href="@{/}" class="flex flex-col items-center gap-1 py-3 text-gray-500">
                 <span class="text-2xl">⌂</span>
                 <span>ホーム</span>
             </a>

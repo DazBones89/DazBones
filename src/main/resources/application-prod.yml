@@ -1,0 +1,21 @@
+spring:
+  config:
+    import: ""
+  flyway:
+    enabled: true
+    baseline-on-migrate: false
+  devtools:
+    restart:
+      enabled: false
+server:
+  forward-headers-strategy: framework
+  servlet:
+    session:
+      cookie:
+        secure: true
+        http-only: true
+        same-site: lax
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-binding-errors: never

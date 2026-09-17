@@ -6,5 +6,6 @@ import java.time.LocalDate;
 import java.util.Optional;
 
 public interface SurveyEventRepository extends JpaRepository<SurveyEvent, Long> {
+    java.util.List<SurveyEvent> findByTargetDateGreaterThanEqualAndTargetDateLessThan(LocalDate start, LocalDate end);
     Optional<SurveyEvent> findByTargetDate(LocalDate date);
 }

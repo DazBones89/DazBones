@@ -7,7 +7,7 @@
 
 <body>
 <section class="px-4 py-6">
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+    <script src="/vendor/fullcalendar-6.1.10.min.js"></script>
 
 
     <div class="mb-5">
@@ -28,7 +28,7 @@
     </div>
 
     <!-- 詳細モーダル -->
-    <div id="scheduleModal"
+    <div id="scheduleModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"
          class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/50 px-4">
 
         <div class="w-full max-w-[420px] rounded-2xl bg-white shadow-xl">
@@ -39,7 +39,7 @@
                 </h2>
 
                 <button type="button"
-                        onclick="closeScheduleModal()"
+                        onclick="closeScheduleModal()" aria-label="閉じる"
                         class="rounded-full bg-gray-100 px-3 py-1 text-xl font-bold text-gray-600">
                     ×
                 </button>
@@ -91,7 +91,7 @@
 
             <div class="border-t border-gray-100 px-5 py-4">
                 <button type="button"
-                        onclick="closeScheduleModal()"
+                        onclick="closeScheduleModal()" aria-label="閉じる"
                         class="w-full rounded-xl db-bg-brown px-4 py-3 font-bold text-white">
                     閉じる
                 </button>
@@ -120,6 +120,8 @@
             events: '/api/schedules',
 
             eventClick: function (info) {
+                info.el.tabIndex = 0;
+                info.el.focus();
                 openScheduleModal(info.event);
             }
         });

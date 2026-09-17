@@ -12,6 +12,9 @@ import java.time.LocalTime;
 public class ScheduleForm {
 
     private Long id;
+    private Long version;
+    public Long getVersion() { return version; }
+    public void setVersion(Long value) { version = value; }
 
     @NotBlank(message = "タイトルは必須です")
     @Size(max = 255, message = "タイトルは255文字以内で入力してください")

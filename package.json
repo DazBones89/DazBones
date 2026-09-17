@@ -1,0 +1,11 @@
+{
+  "name": "dazbones-assets",
+  "private": true,
+  "scripts": {
+    "build": "tailwindcss -c tailwind.config.cjs -i frontend/styles.css -o src/main/resources/static/css/site.css --minify && node frontend/vendor.cjs"
+  },
+  "devDependencies": {
+    "tailwindcss": "3.4.17",
+    "fullcalendar": "6.1.10"
+  }
+}

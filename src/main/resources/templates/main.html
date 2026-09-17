@@ -8,7 +8,7 @@
 </head>
 
 <body>
-<section>
+<section class="db-home">
 
     <!-- ファーストビュー -->
     <div class="relative h-[390px] overflow-hidden bg-gray-200">
@@ -177,27 +177,7 @@
                 <a th:href="@{/photo}" class="text-sm font-bold db-gold">もっと見る ＞</a>
             </div>
 
-            <div class="flex gap-3 overflow-x-auto pb-2">
-                <img src="/uploads/images/group-photo.jpg"
-                     onerror="this.onerror=null; this.src='/images/no-image.png';"
-                     alt="写真1"
-                     class="h-28 w-28 shrink-0 rounded-xl object-cover">
-
-                <img src="/uploads/images/group-photo.jpg"
-                     onerror="this.onerror=null; this.src='/images/no-image.png';"
-                     alt="写真2"
-                     class="h-28 w-28 shrink-0 rounded-xl object-cover">
-
-                <img src="/uploads/images/group-photo.jpg"
-                     onerror="this.onerror=null; this.src='/images/no-image.png';"
-                     alt="写真3"
-                     class="h-28 w-28 shrink-0 rounded-xl object-cover">
-
-                <img src="/uploads/images/group-photo.jpg"
-                     onerror="this.onerror=null; this.src='/images/no-image.png';"
-                     alt="写真4"
-                     class="h-28 w-28 shrink-0 rounded-xl object-cover">
-            </div>
+            <a href="/photo" class="block"><img src="/uploads/images/group-photo.jpg" onerror="this.onerror=null;this.src='/images/no-image.png';" alt="DazBonesの集合写真" class="h-52 w-full rounded-xl object-cover"></a>
         </div>
     </div>
 

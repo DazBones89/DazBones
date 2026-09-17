@@ -29,6 +29,7 @@
     <p th:if="${players.isEmpty()}" class="my-4 rounded-xl bg-gray-50 p-3">在籍中の選手がいません。選手一覧から登録してください。</p>
     <p th:if="${!editable and !players.isEmpty()}" class="my-4 rounded-xl bg-yellow-50 p-3 text-sm">閲覧のみ可能です。本人用ログインに選手を紐付けると回答できます。管理者に設定を依頼してください。</p>
     <p th:if="${editable}" class="mb-3 font-bold"><span th:each="p : ${players}" th:if="${p.id == selectedPlayer}" th:text="${p.name}"></span> さんの回答</p>
+    <div class="db-attendance-grid">
     <article th:each="date : ${dates}" th:id="${'day-' + date.toString()}" th:with="answer=${selectedAnswers.get(date)},dayAnswers=${allAnswers.get(date)},draft=${draftDate != null and draftDate == date}" class="mb-4 rounded-2xl border bg-white p-4 shadow-sm">
         <h2 th:text="${#temporals.format(date, 'M月d日（E）')}" class="mb-3 text-lg font-bold"></h2>
         <p th:if="${draft and errorMessage != null}" th:text="${errorMessage}" role="alert" class="mb-3 text-sm text-red-800"></p>
@@ -53,6 +54,7 @@
             </li></ul>
         </details>
     </article>
+    </div>
     <details th:if="${userSession.isAdmin()}" class="mt-6 rounded-xl border p-4">
         <summary class="cursor-pointer font-bold">本人ログインと選手の紐付け（管理者）</summary>
         <p class="my-3 text-sm">名前の自動照合は行いません。回答者ごとに本人の選手を設定してください。1人の選手には1つの回答者ログインを紐付けられます。削除済み回答者も紐付けの解除ができます。</p>

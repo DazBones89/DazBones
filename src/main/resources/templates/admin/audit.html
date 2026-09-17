@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html lang="ja" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: layout(~{::title}, ~{::section})}">
+<head><title>操作履歴 | DazBones</title></head><body><section class="px-4 py-6">
+<h1 class="mb-4 text-2xl font-black db-brown">操作履歴</h1>
+<p class="mb-4 text-sm">ログイン中の更新操作を記録しています。共有の管理者・編集者コードでは操作した個人までは特定できません。コードやメモの本文は記録しません。</p>
+<p th:if="${entries.isEmpty()}">記録はまだありません。</p>
+<div class="overflow-x-auto"><table class="w-full text-left text-sm">
+<thead><tr class="border-b"><th class="p-2">日時</th><th class="p-2">ログインID・権限</th><th class="p-2">操作先</th><th class="p-2">結果</th></tr></thead>
+<tbody><tr th:each="entry:${entries}" class="border-b"><td th:text="${#temporals.format(entry.occurredAt,'yyyy-MM-dd HH:mm:ss')}" class="p-2 whitespace-nowrap"></td><td class="p-2"><span th:text="${entry.loginId}"></span><br><span th:text="${entry.role}"></span></td><td th:text="${entry.method + ' ' + entry.target}" class="p-2 break-all"></td><td th:text="${entry.outcome}" class="p-2 whitespace-nowrap"></td></tr></tbody>
+</table></div>
+<nav class="mt-4 flex justify-between"><a th:if="${entries.hasPrevious()}" th:href="@{/admin/audit(page=${entries.number-1})}">前のページ</a><a th:if="${entries.hasNext()}" th:href="@{/admin/audit(page=${entries.number+1})}">次のページ</a></nav>
+</section></body></html>

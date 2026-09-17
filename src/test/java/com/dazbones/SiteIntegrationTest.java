@@ -34,6 +34,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class SiteIntegrationTest {
     @Autowired MockMvc mvc;
+    @Autowired AuditEntryRepository audits;
+    @Autowired jakarta.persistence.EntityManagerFactory entityManagerFactory;
     @Autowired AttendanceAnswerRepository attendanceAnswers;
     @Autowired com.dazbones.service.AttendanceService attendanceService;
     @Autowired PlayerRepository players;
@@ -57,6 +59,7 @@ class SiteIntegrationTest {
 
     @BeforeEach
     void cleanDatabase() {
+        audits.deleteAll();
         attendanceAnswers.deleteAll();
         annualFees.deleteAll(); gears.deleteAll(); holidays.deleteAll();
         credentials.deleteAll();securityStates.deleteAll();credentialService.initialize();
@@ -142,6 +145,78 @@ class SiteIntegrationTest {
         mvc.perform(post("/admin/attendance/bind").session(admin).with(csrf()).param("memberId",m.getId().toString()))
                 .andExpect(flash().attributeExists("successMessage"));
         assertThat(members.findById(m.getId()).orElseThrow().getPlayerId()).isNull();
+    }
+
+    @Test
+    void staleScheduleUpdatesAndDeletesAreRejected() throws Exception {
+        var session=login("editor");
+        mvc.perform(post("/admin/schedules").session(session).with(csrf()).param("title","初回").param("eventDate","2026-09-19"))
+                .andExpect(status().is3xxRedirection());
+        var original=schedules.findAll().get(0);
+        mvc.perform(post("/admin/schedules/{id}/edit",original.getId()).session(session).with(csrf())
+                .param("title","先の編集").param("eventDate","2026-09-19").param("version","0"))
+                .andExpect(status().is3xxRedirection());
+        mvc.perform(post("/admin/schedules/{id}/edit",original.getId()).session(session).with(csrf())
+                .param("title","古い編集").param("eventDate","2026-09-19").param("version","0"))
+                .andExpect(view().name("admin/scheduleForm")).andExpect(model().attributeHasErrors("scheduleForm"));
+        mvc.perform(post("/admin/schedules/{id}/delete",original.getId()).session(session).with(csrf()).param("version","0"))
+                .andExpect(status().isConflict());
+        assertThat(schedules.findById(original.getId()).orElseThrow().getTitle()).isEqualTo("先の編集");
+    }
+
+    @Test
+    void concurrentFirstSurveyAnswersCannotOverwriteEachOther() throws Exception {
+        var m=member("並行回答"); var day=LocalDate.of(2026,9,19);
+        var pool=java.util.concurrent.Executors.newFixedThreadPool(2);
+        var gate=new java.util.concurrent.CountDownLatch(1);
+        java.util.concurrent.Callable<Boolean> write=()->{
+            gate.await();
+            try { surveyService.saveAnswer(day,m.getId(),"参加","",-1L);return true; }
+            catch(org.springframework.web.server.ResponseStatusException e){assertThat(e.getStatusCode().value()).isEqualTo(409);return false;}
+        };
+        try {
+            var a=pool.submit(write);var b=pool.submit(write);gate.countDown();
+            assertThat(java.util.List.of(a.get(15,java.util.concurrent.TimeUnit.SECONDS),b.get(15,java.util.concurrent.TimeUnit.SECONDS))).containsExactlyInAnyOrder(true,false);
+        } finally {pool.shutdownNow();}
+        assertThat(events.count()).isEqualTo(1); assertThat(answers.count()).isEqualTo(1);
+    }
+
+    @Test
+    void surveyRangeUsesBoundedQueriesAndExcludesDeletedMembers() {
+        var active=member("有効");var deleted=member("削除対象");var day=LocalDate.of(2026,9,19);
+        surveyService.saveAnswer(day,active.getId(),"参加","");surveyService.saveAnswer(day,deleted.getId(),"不参加","");
+        memberService.deleteMember(deleted.getId());
+        var stats=entityManagerFactory.unwrap(org.hibernate.SessionFactory.class).getStatistics();
+        stats.setStatisticsEnabled(true);stats.clear();
+        try {
+            var summaries=surveyService.getSummaries(day.withDayOfMonth(1),day.plusMonths(2).withDayOfMonth(1));
+            assertThat(summaries.get(day).get("参加")).isEqualTo(1L);
+            assertThat(summaries.get(day).get("不参加")).isEqualTo(0L);
+            assertThat(summaries.get(day).get("未回答")).isEqualTo(0L);
+            assertThat(stats.getPrepareStatementCount()).isLessThanOrEqualTo(4L);
+        } finally {stats.setStatisticsEnabled(false);}
+    }
+
+    @Test
+    void auditRecordsSafeMetadataAndIsRestrictedToAdmin() throws Exception {
+        var session=login("editor");
+        mvc.perform(post("/admin/schedules").session(session).with(csrf()).param("title","非公開の本文").param("eventDate","2026-09-19"))
+                .andExpect(status().is3xxRedirection());
+        var audit=audits.findAll().get(0);
+        assertThat(audit.getLoginId()).isEqualTo("editor");assertThat(audit.getOutcome()).isEqualTo("完了");
+        assertThat(audit.getTarget()).isEqualTo("/admin/schedules");
+        mvc.perform(get("/admin/audit").session(session)).andExpect(status().isForbidden());
+        mvc.perform(get("/admin/audit").session(login("admin"))).andExpect(status().isOk())
+                .andExpect(content().string(containsString("editor"))).andExpect(content().string(not(containsString("非公開の本文"))));
+    }
+
+    @Test
+    void productionAssetsAreLocalAndReadinessWorks() throws Exception {
+        mvc.perform(get("/schedule")).andExpect(content().string(containsString("/css/site.css")))
+                .andExpect(content().string(not(containsString("cdn.tailwindcss.com"))));
+        mvc.perform(get("/css/site.css")).andExpect(status().isOk());
+        mvc.perform(get("/vendor/fullcalendar-6.1.10.min.js")).andExpect(status().isOk());
+        mvc.perform(get("/health/readiness")).andExpect(status().isOk()).andExpect(jsonPath("$.status").value("UP"));
     }
 
     private MockHttpSession login(String role) throws Exception {
@@ -237,7 +312,7 @@ class SiteIntegrationTest {
     void renderedCalendarsIncludeAssetsAndInitialization() throws Exception {
         for (String path : new String[]{"/schedule", "/survey"}) {
             mvc.perform(get(path).session(login("editor"))).andExpect(status().isOk())
-                    .andExpect(content().string(containsString("index.global.min.js")))
+                    .andExpect(content().string(containsString("/vendor/fullcalendar-6.1.10.min.js")))
                     .andExpect(content().string(containsString("new FullCalendar.Calendar")));
         }
         mvc.perform(get("/photo")).andExpect(status().isOk()).andExpect(view().name("photo"));
@@ -252,7 +327,7 @@ class SiteIntegrationTest {
         Long id = schedules.findAll().get(0).getId();
         mvc.perform(get("/admin/schedules/{id}/edit", id).session(session)).andExpect(status().isOk())
                 .andExpect(content().string(containsString("練習")));
-        mvc.perform(post("/admin/schedules/{id}/edit", id).session(session).with(csrf())
+        mvc.perform(post("/admin/schedules/{id}/edit", id).session(session).with(csrf()).param("version", schedules.findById(id).orElseThrow().getVersion().toString())
                         .param("title", "練習試合").param("eventDate", "2026-09-12")
                         .param("location", "球場").param("resultStatus", "勝利").param("score", "5-3"))
                 .andExpect(redirectedUrl("/admin/schedules"));
@@ -261,7 +336,7 @@ class SiteIntegrationTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$[0].title").value("練習試合"))
                 .andExpect(jsonPath("$[0].allDay").value(true))
                 .andExpect(jsonPath("$[0].extendedProps.resultStatus").value("勝利"));
-        mvc.perform(post("/admin/schedules/{id}/delete", id).session(session).with(csrf()))
+        mvc.perform(post("/admin/schedules/{id}/delete", id).session(session).with(csrf()).param("version", schedules.findById(id).orElseThrow().getVersion().toString()))
                 .andExpect(redirectedUrl("/admin/schedules"));
         assertThat(schedules.count()).isZero();
     }

@@ -108,6 +108,7 @@ public class ScheduleController {
         Schedule s = requireSchedule(id);
         ScheduleForm form = new ScheduleForm();
         form.setId(id);
+        form.setVersion(s.getVersion());
         form.setTitle(s.getTitle());
         form.setEventDate(s.getEventDate());
         form.setStartTime(s.getStartTime());
@@ -133,16 +134,26 @@ public class ScheduleController {
             model.addAttribute("userSession", session.getAttribute("userSession"));
             return "admin/scheduleForm";
         }
+        if (!Objects.equals(s.getVersion(), form.getVersion())) {
+            result.reject("conflict", "他の画面で更新されています。再読み込みして最新の内容を確認してください。");
+            model.addAttribute("userSession", session.getAttribute("userSession"));
+            return "admin/scheduleForm";
+        }
         applyForm(s, form);
-        service.save(s);
+        try { service.save(s); }
+        catch (org.springframework.dao.OptimisticLockingFailureException e) {
+            result.reject("conflict", "他の画面で更新されています。再読み込みして確認してください。");
+            model.addAttribute("userSession", session.getAttribute("userSession"));
+            return "admin/scheduleForm";
+        }
         return "redirect:/admin/schedules";
     }
 
     @PostMapping("/admin/schedules/{id}/delete")
-    public String delete(@PathVariable Long id, HttpSession session) {
+    public String delete(@PathVariable Long id, @RequestParam Long version, HttpSession session) {
         if (!canManage(session)) return "error/404";
         requireSchedule(id);
-        service.delete(id);
+        service.delete(id, version);
         return "redirect:/admin/schedules";
     }
 

@@ -46,10 +46,14 @@ public class ScheduleService {
             s.setCreatedAt(LocalDateTime.now());
         }
         s.setUpdatedAt(LocalDateTime.now());
-        repo.save(s);
+        repo.saveAndFlush(s);
     }
 
-    public void delete(Long id) {
-        repo.deleteById(id);
+    @org.springframework.transaction.annotation.Transactional
+    public void delete(Long id, Long version) {
+        Schedule schedule = repo.findById(id).orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND));
+        if (!java.util.Objects.equals(version, schedule.getVersion())) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.CONFLICT);
+        repo.delete(schedule);
+        repo.flush();
     }
 }

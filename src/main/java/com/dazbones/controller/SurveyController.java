@@ -48,8 +48,9 @@ public class SurveyController {
 
         List<Map<String, Object>> result = new ArrayList<>();
 
+        var summaries = surveyService.getSummaries(range.start(), range.end());
         while (!current.isAfter(last)) {
-            Map<String, Object> summary = surveyService.getSummary(current);
+            Map<String, Object> summary = summaries.get(current);
             String type = (String) summary.get("type");
 
             if (!"none".equals(type)) {
@@ -86,8 +87,9 @@ public class SurveyController {
 
         Map<String, String> result = new HashMap<>();
 
+        var summaries = surveyService.getSummaries(range.start(), range.end());
         while (!current.isAfter(last)) {
-            Map<String, Object> summary = surveyService.getSummary(current);
+            Map<String, Object> summary = summaries.get(current);
             result.put(current.toString(), (String) summary.get("type"));
             current = current.plusDays(1);
         }
@@ -118,6 +120,7 @@ public class SurveyController {
                                       @RequestParam Long memberId,
                                       @RequestParam String status,
                                       @RequestParam(required = false) String comment,
+                                      @RequestParam(defaultValue = "-1") Long version,
                                       HttpSession session) {
         if (!canManage(session)) {
             return Map.of("success", false, "message", "権限がありません");
@@ -125,7 +128,7 @@ public class SurveyController {
 
         UserSession user=(UserSession)session.getAttribute("userSession");
         if(!user.isAdmin() && !memberId.equals(user.getMemberId())) throw new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN);
-        surveyService.saveAnswer(LocalDate.parse(date), memberId, status, comment);
+        surveyService.saveAnswer(LocalDate.parse(date), memberId, status, comment, version);
         session.setAttribute("selectedSurveyMemberId", memberId);
 
         return Map.of("success", true);

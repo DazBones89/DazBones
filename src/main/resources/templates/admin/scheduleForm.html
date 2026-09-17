@@ -28,6 +28,7 @@
             <li th:each="error : ${#fields.allErrors()}" th:text="${error}"></li>
         </ul>
 
+        <input type="hidden" th:field="*{version}">
         <input type="hidden"
                th:if="${_csrf != null}"
                th:name="${_csrf.parameterName}"

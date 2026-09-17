@@ -6,6 +6,9 @@ import jakarta.persistence.*;
 @Table(name = "survey_answers",
         uniqueConstraints = @UniqueConstraint(columnNames = {"surveyEventId","surveyMemberId"}))
 public class SurveyAnswer {
+    @Version private Long version;
+    public Long getVersion() { return version; }
+
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

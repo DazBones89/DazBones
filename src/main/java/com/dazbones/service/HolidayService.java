@@ -15,9 +15,10 @@ import java.util.List;
 public class HolidayService {
 
     private final HolidayRepository repository;
+    private final com.dazbones.repository.SecurityStateRepository states;
 
-    public HolidayService(HolidayRepository repository) {
-        this.repository = repository;
+    public HolidayService(HolidayRepository repository, com.dazbones.repository.SecurityStateRepository states) {
+        this.repository = repository; this.states = states;
     }
 
     public List<Holiday> getAll() {
@@ -28,7 +29,9 @@ public class HolidayService {
         return repository.existsByHolidayDate(date);
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public void addHoliday(LocalDate date, String name) {
+        states.lockState();
         if (date == null || name == null || name.isBlank() || name.trim().length() > 100)
             throw new IllegalArgumentException("日付と100文字以内の祝日名を入力してください");
 
@@ -42,7 +45,9 @@ public class HolidayService {
         repository.save(holiday);
     }
 
+    @org.springframework.transaction.annotation.Transactional
     public void deleteHoliday(Long id) {
+        states.lockState();
         repository.deleteById(id);
     }
 
@@ -81,6 +86,7 @@ public class HolidayService {
             }
         }
         if (rows.isEmpty()) throw new IllegalArgumentException("登録する行がありません");
+        states.lockState();
         java.util.List<Holiday> additions = new java.util.ArrayList<>();
         for (var row : rows.entrySet()) {
             if (repository.existsByHolidayDate(row.getKey())) continue;

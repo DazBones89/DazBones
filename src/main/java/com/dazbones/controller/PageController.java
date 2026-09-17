@@ -70,9 +70,4 @@ public class PageController {
         return "photo";
     }
 
-    @GetMapping("/testlinks")
-    public String testlinks(Model model, HttpSession session) {
-        model.addAttribute("userSession", session.getAttribute("userSession"));
-        return "testlinks";
-    }
 }

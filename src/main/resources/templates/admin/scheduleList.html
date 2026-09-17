@@ -100,6 +100,7 @@
                 <form th:action="@{/admin/schedules/{id}/delete(id=${s.id})}"
                       method="post"
                       onsubmit="return confirm('この活動予定を削除しますか？');">
+<input type="hidden" name="version" th:value="${s.version}">
 
                     <input type="hidden"
                            th:if="${_csrf != null}"

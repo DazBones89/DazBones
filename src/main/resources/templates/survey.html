@@ -11,7 +11,7 @@
         <a th:href="@{/survey}" aria-current="page" class="rounded-xl db-bg-brown px-3 py-3 text-white">その他アンケート</a>
         <a th:href="@{/survey/attendance}" class="rounded-xl border px-3 py-3">出席アンケート</a>
     </nav>
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+    <script src="/vendor/fullcalendar-6.1.10.min.js"></script>
 
     <style>
         .fc-daygrid-day.survey-auto {
@@ -100,7 +100,7 @@
         <div id="surveyCalendar"></div>
     </div>
 
-    <div id="surveyModal"
+    <div id="surveyModal" role="dialog" aria-modal="true" aria-labelledby="modalDateTitle"
          class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/50 px-4">
 
         <div class="max-h-[90vh] w-full max-w-[430px] overflow-y-auto rounded-2xl bg-white shadow-xl">
@@ -112,7 +112,7 @@
                 </div>
 
                 <button type="button"
-                        onclick="closeSurveyModal()"
+                        onclick="closeSurveyModal()" aria-label="閉じる"
                         class="rounded-full bg-gray-100 px-3 py-1 text-xl font-bold text-gray-600">
                     ×
                 </button>
@@ -198,7 +198,7 @@
                 </div>
 
                 <button type="button"
-                        onclick="closeSurveyModal()"
+                        onclick="closeSurveyModal()" aria-label="閉じる"
                         class="w-full rounded-xl border px-4 py-3 font-bold">
                     閉じる
                 </button>
@@ -214,12 +214,13 @@
     const ownMember = /*[[${userSession.memberId}]]*/ null;
     const csrfName = /*[[${_csrf.parameterName}]]*/ '';
     const csrfToken = /*[[${_csrf.token}]]*/ '';
-    let surveyCalendar, busy = false, answerEnabled = false, detailSequence = 0;
+    let surveyCalendar, busy = false, answerEnabled = false, detailSequence = 0, answerVersion = -1;
     const el = id => document.getElementById(id);
     function message(text) { el('surveyMessage').textContent = text; el('modalMessage').textContent = text; }
     async function request(url, options) {
         const r = await fetch(url, options);
         if (r.status === 401 || r.status === 403) throw new Error('権限がないかログインが切れています。ログイン状態を確認してください。');
+        if (r.status === 409) throw new Error('他の画面で更新されました。画面を開き直して最新の回答を確認してください。');
         if (!r.ok) throw new Error('保存・取得に失敗しました。入力内容を確認して再試行してください。');
         const data = await r.json();
         if (data.success === false) throw new Error(data.message || '処理に失敗しました');
@@ -252,6 +253,7 @@
             if(sequence!==detailSequence)return;
             el('modalSurveyTitle').textContent=data.title;
             ['参加','不参加','未定','未回答'].forEach((key,i)=>renderNames(['joinList','absentList','undecidedList','noAnswerList'][i],data[key]||[]));
+            answerVersion=data.myVersion;
             el('answerStatus').value=data.myStatus||'参加';el('answerComment').value=data.myComment||'';
             el('myAnswerBox').classList.toggle('hidden',!data.myStatus);el('myAnswerStatus').textContent=data.myStatus||'';
             answerEnabled=!!data.canAnswer && (isAdmin || ownMember!==null);
@@ -281,7 +283,7 @@
         if(!memberId){message('回答者を選択してください。');return;}
         if(!answerEnabled)return;
         el('globalMemberSelect').value=memberId;
-        save('/survey/answer',{date:el('answerDate').value,memberId,status:el('answerStatus').value,comment:el('answerComment').value});
+        save('/survey/answer',{date:el('answerDate').value,memberId,status:el('answerStatus').value,comment:el('answerComment').value,version:answerVersion});
     }
     function createManualSurvey(){save('/survey/manual',{date:el('answerDate').value,title:el('manualSurveyTitle').value});}
     function deleteManualSurvey(){if(confirm('手動アンケートを削除しますか？平日は回答も削除されます。土日祝は手動設定のみを削除し、自動アンケートと回答は残ります。'))save('/survey/manual/delete',{date:el('answerDate').value});}
@@ -290,7 +292,10 @@
         surveyCalendar=new FullCalendar.Calendar(el('surveyCalendar'),{
             initialView:'dayGridMonth',locale:'ja',height:'auto',headerToolbar:{left:'prev,next today',center:'title',right:''},
             events:'/api/survey/events',eventSourceFailure:()=>message('アンケートを取得できませんでした。'),
-            datesSet:info=>backgrounds(info.startStr,info.endStr),dateClick:info=>openSurveyModal(info.dateStr),eventClick:info=>openSurveyModal(info.event.startStr)
+            datesSet:info=>backgrounds(info.startStr,info.endStr),
+            dayCellDidMount:info=>{info.el.tabIndex=0;info.el.addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target===info.el){e.preventDefault();openSurveyModal(localDate(info.date));}});},
+            dateClick:info=>{info.dayEl.focus();openSurveyModal(info.dateStr);},
+            eventClick:info=>{info.el.tabIndex=0;info.el.focus();openSurveyModal(info.event.startStr);}
         });surveyCalendar.render();
         el('answerMemberId').addEventListener('change',loadDetail);
         document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSurveyModal();});
