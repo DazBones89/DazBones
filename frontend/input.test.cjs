@@ -85,8 +85,8 @@ test('attendance saves cross and updates counts, names and comments', async () =
     s.change(s.q('#inputContent textarea'), '午前は不参加');
     await until(() => s.calls.length === 2 && s.q('.save-state').textContent === '保存済み');
     assert.equal(s.q('.person-memo').textContent, '午前は不参加');
-    s.q('.day-nav button:last-child').click();
-    await until(() => s.q('.day-nav h2').textContent.includes('06'));
+    s.q('.attendance-detail .day-nav button:last-child').click();
+    await until(() => s.q('.attendance-detail .day-nav h2').textContent.includes('06'));
     assert.equal(s.q('#inputContent textarea').value, '');
   } finally { s.dom.window.close(); }
 });
@@ -118,5 +118,29 @@ test('new gear is created once and later edits use its id and version', async ()
     await until(() => s.calls.length === 2 && s.q('.save-state').textContent === '保存済み');
     assert.equal(s.calls[1].values.id, '7');
     assert.equal(s.calls[1].values.version, '0');
+  } finally { s.dom.window.close(); }
+});
+
+
+test('attendance input sits before summary and supports month arrows across years', async () => {
+  const s = await screen('attendance');
+  try {
+    const editor = s.q('.attendance-editor');
+    assert.equal(editor.previousElementSibling.className, 'month-grid');
+    assert.match(editor.nextElementSibling.textContent, /出欠確認/);
+    const choice = s.q('.answer-option');
+    choice.click();
+    await until(() => s.q('.save-state').textContent === '保存済み');
+    assert.equal(s.q('.answer-radio:checked').value, '○');
+    assert.equal(s.calls[0].values.status, '○');
+    s.q('[aria-label="次の月"]').click();
+    await until(() => s.q('.month-nav h2').textContent.includes('10月'));
+    s.q('[aria-label="前の月"]').click();
+    await until(() => s.q('.month-nav h2').textContent.includes('9月'));
+    s.qa('.month-grid button')[11].click();
+    await until(() => s.q('.month-nav h2').textContent.includes('12月'));
+    s.q('[aria-label="次の月"]').click();
+    await until(() => s.q('.month-nav h2').textContent.includes('2027年1月'));
+    assert.equal(s.q('#inputYear').value, '2027');
   } finally { s.dom.window.close(); }
 });
