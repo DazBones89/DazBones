@@ -67,6 +67,39 @@ public class AttendanceService {
     }
 
     @Transactional
+    public List<AttendanceAnswer> saveMonth(UserSession user, Long playerId, String monthValue,
+                                           String status, Map<LocalDate, Long> versions) {
+        if (user == null || !user.canManage()) throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        YearMonth selectedMonth = month(monthValue);
+        if (!Set.of("○", "△", "×").contains(status == null ? "" : status))
+            throw new IllegalArgumentException("○・△・×を選択してください");
+        states.lockState();
+        players.lockForFee(playerId).filter(p -> Integer.valueOf(0).equals(p.getDeleteFlg()))
+                .orElseThrow(() -> new IllegalArgumentException("在籍中の選手を指定してください"));
+        List<LocalDate> targets = dates(selectedMonth);
+        if (versions == null || !versions.keySet().equals(new HashSet<>(targets)))
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "対象日が変更されています。再読み込みしてください");
+        Map<LocalDate, AttendanceAnswer> existing = new HashMap<>();
+        answers(selectedMonth).stream().filter(a -> a.getPlayerId().equals(playerId))
+                .forEach(a -> existing.put(a.getTargetDate(), a));
+        for (LocalDate date : targets) {
+            AttendanceAnswer answer = existing.get(date);
+            if (!Objects.equals(answer == null ? -1L : answer.getVersion(), versions.get(date)))
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "回答が更新されています。再読み込みしてください");
+        }
+        List<AttendanceAnswer> saved = new ArrayList<>();
+        for (LocalDate date : targets) {
+            AttendanceAnswer answer = existing.get(date);
+            if (answer == null) {
+                answer = new AttendanceAnswer(); answer.setPlayerId(playerId);
+                answer.setTargetDate(date); answer.setMemo("");
+            }
+            answer.setStatus(status); saved.add(answer);
+        }
+        return answers.saveAllAndFlush(saved);
+    }
+
+    @Transactional
     public AttendanceAnswer save(UserSession user, Long playerId, LocalDate date, String status, String memo, Long version) {
         // Binding changes and answer writes share a lock, so authorization cannot change midway through a write.
         states.lockState();

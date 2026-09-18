@@ -561,4 +561,37 @@ class SiteIntegrationTest {
         assertThat(attendanceService.dates(java.time.YearMonth.of(2026,9))).isSorted().doesNotHaveDuplicates().contains(LocalDate.of(2026,9,16),LocalDate.of(2026,9,21));
         org.assertj.core.api.Assertions.assertThatThrownBy(()->inputService.date(u,LocalDate.of(2101,1,1))).isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test void inputTitlesAndTabsRenderAsText() throws Exception {
+        var session=login("editor");
+        var routes=java.util.Map.of("/survey/attendance","出欠確認","/fee","部費","/gear","道具管理","/players/stats","打撃成績");
+        for(var entry:routes.entrySet()){
+            mvc.perform(get(entry.getKey()).session(session)).andExpect(status().isOk())
+                .andExpect(content().string(containsString("<title>"+entry.getValue()+" | DazBones</title>")))
+                .andExpect(content().string(containsString("<h1>"+entry.getValue()+"</h1>")))
+                .andExpect(content().string(containsString("data-tab=\"attendance\"")))
+                .andExpect(content().string(not(containsString("&lt;title"))))
+                .andExpect(content().string(not(containsString("一括入力"))));
+        }
+    }
+    @Test void bulkAttendanceIsAtomicPreservesCommentsAndLimitsPlayerAndMonth() throws Exception {
+        var p=player("一括対象",1,1,"投手");var other=player("別選手",2,1,"捕手");var session=login("editor");var u=(UserSession)session.getAttribute("userSession");
+        var day=LocalDate.of(2026,9,5);attendanceService.save(u,p.getId(),day,"○","既存コメント",-1L);
+        attendanceService.save(u,other.getId(),day,"×","別人",-1L);
+        attendanceService.save(u,p.getId(),LocalDate.of(2026,10,3),"○","翌月",-1L);
+        var versions=new java.util.LinkedHashMap<LocalDate,Long>();
+        attendanceService.dates(java.time.YearMonth.of(2026,9)).forEach(d->versions.put(d,d.equals(day)?0L:-1L));
+        var mapper=new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules();
+        String body=mapper.writeValueAsString(java.util.Map.of("playerId",p.getId(),"month","2026-09","status","△","versions",versions));
+        mvc.perform(post("/api/input/attendance/bulk").session(session).with(csrf()).contentType("application/json").content(body)).andExpect(status().isOk()).andExpect(jsonPath("$.answers.length()").value(versions.size()));
+        var saved=attendanceService.answers(java.time.YearMonth.of(2026,9));
+        assertThat(saved.stream().filter(x->x.getPlayerId().equals(p.getId()))).allMatch(x->x.getStatus().equals("△"));
+        assertThat(attendanceAnswers.findByPlayerIdAndTargetDate(p.getId(),day).orElseThrow().getMemo()).isEqualTo("既存コメント");
+        assertThat(attendanceAnswers.findByPlayerIdAndTargetDate(other.getId(),day).orElseThrow().getStatus()).isEqualTo("×");
+        assertThat(attendanceAnswers.findByPlayerIdAndTargetDate(p.getId(),LocalDate.of(2026,10,3)).orElseThrow().getStatus()).isEqualTo("○");
+        mvc.perform(post("/api/input/attendance/bulk").session(session).with(csrf()).contentType("application/json").content(body.replace("△","×"))).andExpect(status().isConflict());
+        assertThat(attendanceService.answers(java.time.YearMonth.of(2026,9)).stream().filter(x->x.getPlayerId().equals(p.getId()))).allMatch(x->x.getStatus().equals("△"));
+        mvc.perform(post("/api/input/attendance/bulk").session(session).contentType("application/json").content(body)).andExpect(status().isForbidden());
+        mvc.perform(post("/api/input/attendance/bulk").with(csrf()).contentType("application/json").content(body)).andExpect(status().isUnauthorized());
+    }
 }

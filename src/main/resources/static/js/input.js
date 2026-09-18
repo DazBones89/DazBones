@@ -2,13 +2,13 @@
 const app=document.getElementById('inputApp');if(!app)return;
 const q=s=>app.querySelector(s),content=q('#inputContent'),notice=q('#loadStatus'),yearInput=q('#inputYear'),playerSelect=q('#inputPlayer');
 const params=new URLSearchParams(location.search),today=new Date();let year=Number(params.get('year'))||today.getFullYear(),month=params.get('month')||`${year}-${String(today.getMonth()+1).padStart(2,'0')}`,tab=app.dataset.page||'attendance',selected=Number(params.get('playerId'))||null,data,day=null;
-let controllers=[];
+let controllers=[],actionBusy=false;
 const el=(tag,text,cls)=>{const x=document.createElement(tag);if(text!==undefined)x.textContent=text;if(cls)x.className=cls;return x;};
 const card=title=>{const c=el('div',undefined,'input-card');if(title)c.append(el('h2',title));return c;};
 function field(parent,title,type,value){const l=el('label',title),i=el(type==='textarea'?'textarea':'input');if(type!=='textarea')i.type=type;if(type==='checkbox')i.checked=Boolean(value);else i.value=value??'';l.append(i);parent.append(l);return i;}
 function button(text,fn,cls){const b=el('button',text,cls);b.type='button';b.addEventListener('click',fn);return b;}
 function select(parent,title,options,value){const l=el('label',title),s=el('select');for(const [v,text] of options){const o=el('option',text);o.value=v;s.append(o);}s.value=value??'';l.append(s);parent.append(l);return s;}
-async function post(path,values){const body=new URLSearchParams();Object.entries(values).forEach(([k,v])=>{if(v!==null&&v!==undefined)body.set(k,String(v));});const r=await fetch(path,{method:'POST',body,headers:{[app.dataset.csrfHeader]:app.dataset.csrf}});let result;try{result=await r.json();}catch{}if(!r.ok)throw Error(r.status===409?'他の画面で更新されています。入力を控えて再読み込みしてください。':r.status===401||r.status===403?'ログインが失効したか、権限が変更されました。':result?.message||'保存できませんでした。入力内容・通信状態を確認してください。');return result;}
+async function post(path,values){const body=new URLSearchParams();Object.entries(values).forEach(([k,v])=>{if(v!==null&&v!==undefined)body.set(k,String(v));});const isJson=path.endsWith('/bulk');const headers={[app.dataset.csrfHeader]:app.dataset.csrf};if(isJson)headers['Content-Type']='application/json';const r=await fetch(path,{method:'POST',body:isJson?JSON.stringify(values):body,headers});let result;try{result=await r.json();}catch{}if(!r.ok)throw Error(r.status===409?'他の画面で更新されています。入力を控えて再読み込みしてください。':r.status===401||r.status===403?'ログインが失効したか、権限が変更されました。':result?.message||'保存できませんでした。入力内容・通信状態を確認してください。');return result;}
 // Each form serializes saves; changes made during a request remain queued with the returned version.
 function autosave(parent,inputs,path,values,onSaved){let dirty=false,busy=false,timer=null,failure=false;const status=el('output','', 'save-state');status.setAttribute('aria-live','polite');const retry=button('再試行',()=>{failure=false;return save();},'retry');retry.hidden=true;parent.append(status,retry);
  async function save(){clearTimeout(timer);if(busy||!dirty)return !failure;busy=true;dirty=false;failure=false;retry.hidden=true;status.classList.remove('error');status.textContent='保存中…';try{const payload=values();const result=await post(path,payload);onSaved(result,payload);status.textContent='保存済み';}catch(e){dirty=true;failure=true;status.textContent=e.message;status.classList.add('error');retry.hidden=false;}finally{busy=false;}if(dirty&&!failure)return save();return !failure;}
@@ -16,9 +16,9 @@ function autosave(parent,inputs,path,values,onSaved){let dirty=false,busy=false,
  const ctl={flush:async()=>{clearTimeout(timer);while(busy)await new Promise(r=>setTimeout(r,40));return save();},pending:()=>dirty||busy};controllers.push(ctl);return ctl;
 }
 async function flush(){for(const c of controllers)if(!await c.flush())return false;return true;}
-window.addEventListener('beforeunload',e=>{if(controllers.some(c=>c.pending())){e.preventDefault();e.returnValue='';}});
+window.addEventListener('beforeunload',e=>{if(actionBusy||controllers.some(c=>c.pending())){e.preventDefault();e.returnValue='';}});
 async function load(){notice.textContent='読み込み中…';notice.className='';try{const r=await fetch(`/api/input?year=${year}&month=${month}`);if(!r.ok)throw Error('読み込めませんでした。ログインと通信状態を確認してください。');data=await r.json();if(!data.players.some(p=>p.id===selected))selected=data.players[0]?.id??null;playerSelect.replaceChildren();for(const p of data.players){const o=el('option',p.name);o.value=p.id;playerSelect.append(o);}playerSelect.value=selected??'';notice.textContent='';render();}catch(e){notice.textContent=e.message;notice.className='error';}}
-function render(){controllers=[];content.replaceChildren();yearInput.value=year;q('#yearField').hidden=!['fee','attendance'].includes(tab);q('#playerField').hidden=tab==='gear';app.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===tab)));if(tab==='stats')stats();else if(tab==='fee')fee();else if(tab==='gear')gear();else attendance();}
+function render(){const title={stats:'打撃成績',fee:'部費',gear:'道具管理',attendance:'出欠確認'}[tab];q('h1').textContent=title;document.title=title+' | DazBones';controllers=[];content.replaceChildren();yearInput.value=year;q('#yearField').hidden=!['fee','attendance'].includes(tab);q('#playerField').hidden=tab==='gear';app.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===tab)));if(tab==='stats')stats();else if(tab==='fee')fee();else if(tab==='gear')gear();else attendance();}
 function stats(){const p=data.players.find(p=>p.id===selected);if(!p){content.append(el('p','表示中の選手がいません。'));return;}const c=card('打撃成績'),inputs=[];let bats,hits;
  if(data.fields.atBats){bats=field(c,'打数','number',p.atBats??0);bats.min='0';inputs.push(bats);}if(data.fields.hits){hits=field(c,'安打','number',p.hits??0);hits.min='0';inputs.push(hits);}const avg=el('p');const average=()=>{if(data.fields.average&&bats&&hits)avg.textContent=`打率：${Number(bats.value)>0?(Number(hits.value)/Number(bats.value)).toFixed(3):'---'}`;};inputs.forEach(i=>i.addEventListener('input',average));average();c.append(avg);
  if(inputs.length)autosave(c,inputs,'/api/input/stats',()=>{if([bats,hits].filter(Boolean).some(i=>i.value===''||!Number.isInteger(Number(i.value))||Number(i.value)<0))throw Error('打数・安打は0以上の整数を入力してください。');return {playerId:p.id,version:p.version,atBats:bats?bats.value:null,hits:hits?hits.value:null};},(r,payload)=>{p.version=r.version;if(bats)p.atBats=Number(payload.atBats);if(hits)p.hits=Number(payload.hits);});else c.append(el('p','打数・安打は非表示に設定されています。'));content.append(c);}
@@ -35,6 +35,26 @@ function attendance(){
  const monthPicker=el('div',undefined,'month-picker');
  const monthSelect=select(monthPicker,'月',Array.from({length:12},(_,i)=>[`${year}-${String(i+1).padStart(2,'0')}`,`${i+1}月`]),month);
  monthSelect.addEventListener('change',async()=>{const target=monthSelect.value;await changeMonth(target);monthSelect.value=month;});content.append(monthPicker);
+ const bulk=el('div',undefined,'bulk-attendance');
+ const bulkChoice=select(bulk,'この月をまとめて回答',[['','回答を選択'],['○','○'],['△','△'],['×','×']],'');
+ const bulkCheck=field(bulk,'一括登録','checkbox',false);bulkCheck.disabled=!selected||!data.dates.length;
+ bulk.append(el('p','選択中の選手の、この月の対象日すべてを更新します。コメントは保持します。','muted'));
+ const bulkStatus=el('output','', 'save-state');bulkStatus.setAttribute('aria-live','polite');bulk.append(bulkStatus);monthPicker.append(bulk);
+ bulkCheck.addEventListener('change',async()=>{
+  if(!bulkCheck.checked||actionBusy)return;
+  if(!bulkChoice.value){bulkCheck.checked=false;bulkStatus.textContent='○・△・×を選択してください。';bulkStatus.classList.add('error');return;}
+  actionBusy=true;const controls=[...app.querySelectorAll('input,select,textarea,button')].map(control=>[control,control.disabled]);controls.forEach(([control])=>control.disabled=true);
+  try{
+   if(!await flush())throw Error('未保存の入力を確認してから、一括登録してください。');
+   const targetPlayer=selected,targetMonth=month,status=bulkChoice.value;
+   const versions=Object.fromEntries(data.dates.map(date=>[date,data.answers.find(a=>a.playerId===targetPlayer&&a.date===date)?.version??-1]));
+   bulkStatus.classList.remove('error');bulkStatus.textContent='一括登録中…';
+   const result=await post('/api/input/attendance/bulk',{playerId:targetPlayer,month:targetMonth,status,versions});
+   const savedDates=new Set(result.answers.map(a=>a.date));data.answers=data.answers.filter(a=>a.playerId!==targetPlayer||!savedDates.has(a.date));data.answers.push(...result.answers);
+   notice.className='';notice.textContent=`${targetMonth}の${result.answers.length}日分を「${status}」で登録しました。`;render();
+  }catch(e){bulkStatus.textContent=e.message;bulkStatus.classList.add('error');}
+  finally{actionBusy=false;bulkCheck.checked=false;controls.forEach(([control,disabled])=>control.disabled=disabled);}
+ });
  const editor=card();editor.classList.add('attendance-editor');content.append(editor);
  const summary=card(`${Number(month.slice(0,4))}年${Number(month.slice(5))}月の出欠確認`);const rows=new Map();function refresh(){for(const [date,row] of rows){row.replaceChildren(el('span',dateLabel(date)));const counts=el('span',undefined,'day-counts'),answers=data.answers.filter(a=>a.date===date);for(const s of ['○','△','×'])counts.append(el('span',`${s} ${answers.filter(a=>a.status===s).length}`));row.append(counts);}if(detail.isConnected)renderDetail();}
  for(const date of data.dates){const row=button('',async()=>{if(!await flush())return;day=date;renderDetail();detail.scrollIntoView({behavior:'smooth',block:'start'});},'day-row');rows.set(date,row);summary.append(row);}content.append(summary);
@@ -66,6 +86,12 @@ function attendance(){
  }
  refresh();}
 
+app.querySelectorAll('[data-tab]').forEach(button=>button.addEventListener('click',async()=>{
+ if(actionBusy||!await flush())return;tab=button.dataset.tab;
+ const route={stats:'/players/stats',fee:'/fee',gear:'/gear',attendance:'/survey/attendance'}[tab];
+ const query=new URLSearchParams({year:String(year),month});if(selected)query.set('playerId',String(selected));
+ history.replaceState(null,'',route+'?'+query);render();
+}));
 playerSelect.addEventListener('change',async()=>{const next=Number(playerSelect.value);if(!await flush()){playerSelect.value=selected;return;}selected=next;render();});
 yearInput.addEventListener('change',async()=>{const next=Number(yearInput.value);if(!Number.isInteger(next)||next<1900||next>2100||!await flush()){yearInput.value=year;return;}year=next;month=`${year}-${month.slice(5)}`;day=null;await load();});
 if(!['stats','fee','gear','attendance'].includes(tab))tab='stats';load();
