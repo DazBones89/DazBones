@@ -7,6 +7,8 @@ public class AnnualFee {
     @Column(name="player_id",nullable=false) private Long playerId;
     @Column(name="fiscal_year",nullable=false) private Integer fiscalYear;
     @Column(nullable=false) private Integer amount=0;
+    @Column(nullable=false) private boolean paid;
+    public boolean isPaid(){return paid;} public void setPaid(boolean value){paid=value;}
     @Column(name="paid_amount",nullable=false) private Integer paidAmount=0;
     @Column(length=1000) private String comment;
     @Version private Long version;

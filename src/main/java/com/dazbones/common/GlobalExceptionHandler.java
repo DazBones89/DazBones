@@ -28,6 +28,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(IllegalArgumentException.class)
     public Object handleValidation(IllegalArgumentException e,HttpServletRequest request,HttpServletResponse response){
+        if(request.getRequestURI().startsWith("/api/input"))return ResponseEntity.badRequest().body(java.util.Map.of("success",false,"message",e.getMessage()));
         return error(400,request,response);
     }
 

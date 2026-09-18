@@ -10,9 +10,7 @@
 <body>
 <section class="px-4 py-6">
 
-    <h1 class="mb-5 text-2xl font-black db-brown" th:text="${audience == 'MEMBERS' ? 'メンバー限定のお知らせ' : '一般公開のお知らせ'}"></h1>
-    <div class="mb-5 flex gap-4"><a th:href="@{/news}" class="underline">一般公開</a><a th:if="${userSession != null}" th:href="@{/news/members}" class="underline">メンバー限定</a></div>
-
+    <h1 class="mb-5 text-2xl font-black db-brown">お知らせ</h1>
     <div th:if="${newsList == null or newsList.isEmpty()}"
          class="rounded-2xl bg-white p-6 text-center text-sm text-gray-500 shadow-md ring-1 ring-gray-100">
         現在お知らせはありません。
@@ -29,7 +27,7 @@
             </p>
 
             <h2 class="mt-1 text-lg font-black db-brown"
-                th:text="${news.title}">
+                th:text="${news.displayTitle}">
                 お知らせタイトル
             </h2>
 

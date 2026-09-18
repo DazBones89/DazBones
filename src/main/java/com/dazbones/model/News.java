@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "news")
 public class News {
+    public String getDisplayTitle(){return "MEMBERS".equals(getAudience()) ? "【選手用】" + getTitle().replaceFirst("^【選手用】", "") : getTitle();}
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

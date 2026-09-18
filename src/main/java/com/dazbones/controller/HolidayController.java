@@ -93,6 +93,6 @@ public class HolidayController {
 
     private boolean isAdmin(HttpSession session) {
         UserSession user = (UserSession) session.getAttribute("userSession");
-        return user != null && user.isAdmin();
+        return user != null && user.isMaster();
     }
 }

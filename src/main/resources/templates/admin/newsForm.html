@@ -31,7 +31,7 @@
 
         <div>
             <label class="block font-bold">公開区分</label>
-            <select th:field="*{audience}" class="w-full rounded-xl border p-3"><option value="PUBLIC">一般公開</option><option value="MEMBERS">メンバー限定</option></select>
+            <select th:field="*{audience}" class="w-full rounded-xl border p-3"><option value="PUBLIC">一般公開</option><option value="MEMBERS">選手用</option></select>
         </div>
         <ul th:if="${#fields.hasAnyErrors()}" class="text-red-700"><li th:each="e:${#fields.allErrors()}" th:text="${e}"></li></ul>
         <div>

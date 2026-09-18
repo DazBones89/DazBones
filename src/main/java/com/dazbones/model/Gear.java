@@ -6,6 +6,8 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "gear")
 public class Gear {
+    @Version private Long version;
+    public Long getVersion(){return version;}
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

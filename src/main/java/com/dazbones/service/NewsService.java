@@ -16,6 +16,11 @@ public class NewsService {
         this.repo = repo;
     }
 
+    public List<News> visible(boolean loggedIn) {
+        return repo.findAll().stream().filter(n -> n.getPublishedAt()!=null && !n.getPublishedAt().isAfter(LocalDateTime.now()))
+            .filter(n -> "PUBLIC".equals(n.getAudience()) || loggedIn && "MEMBERS".equals(n.getAudience()))
+            .sorted(java.util.Comparator.comparing(News::getPublishedAt).reversed()).toList();
+    }
     public List<News> getTop3() {
         return repo.findTop3ByAudienceAndPublishedAtLessThanEqualOrderByPublishedAtDesc("PUBLIC", LocalDateTime.now());
     }

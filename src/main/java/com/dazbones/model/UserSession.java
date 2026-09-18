@@ -29,8 +29,10 @@ public class UserSession implements Serializable {
     }
 
     public boolean isAdmin() {
-        return "admin".equals(role);
+        return isMaster();
     }
+
+    public boolean isMaster() { return "master".equals(role); }
 
     public boolean isEditor() {
         return "editor".equals(role);
@@ -41,16 +43,8 @@ public class UserSession implements Serializable {
     }
 
     public boolean canManage() {
-        return isAdmin() || isEditor();
+        return isMaster() || "player".equals(role);
     }
 
-    public String getDisplayName() {
-        if (isAdmin()) {
-            return "管理者";
-        }
-        if (isEditor()) {
-            return "ログイン中";
-        }
-        return "member".equals(role) ? "メンバー" : "ログイン";
-    }
+    public String getDisplayName() { return isMaster() ? "master" : "選手"; }
 }

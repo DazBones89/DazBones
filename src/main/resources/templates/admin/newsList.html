@@ -36,9 +36,9 @@
                 2024.05.12 10:00
             </p>
 
-            <p class="text-sm font-bold" th:text="${news.audience == 'MEMBERS' ? 'メンバー限定' : '一般公開'}"></p>
+            <p class="text-sm font-bold" th:text="${news.audience == 'MEMBERS' ? '選手用' : '一般公開'}"></p>
             <h2 class="mt-1 text-lg font-black db-brown"
-                th:text="${news.title}">
+                th:text="${news.displayTitle}">
                 お知らせタイトル
             </h2>
 

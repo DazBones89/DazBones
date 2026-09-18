@@ -44,12 +44,9 @@
             <a th:href="@{/survey}"
                th:if="${userSession != null and userSession.canManage()}"
                class="rounded-2xl bg-white p-4 shadow-md ring-1 ring-gray-100">
-                <p class="text-xs font-black text-yellow-600">本日の未回答</p>
-                <p class="mt-1 text-3xl font-black db-brown"
-                   th:text="${todayNoAnswerCount}">
-                    0
-                </p>
-                <p class="mt-1 text-xs text-gray-500">アンケートへ</p>
+                <p class="text-xs font-black text-yellow-600">出欠確認</p>
+                <p class="mt-1 text-3xl font-black db-brown">○ △ ×</p>
+                <p class="mt-1 text-xs text-gray-500">月別の回答状況へ</p>
             </a>
 
         </div>
@@ -149,7 +146,7 @@
                         2024.05.12
                     </time>
                     <p class="flex-1 text-sm font-bold text-gray-800"
-                       th:text="${news.title}">
+                       th:text="${news.displayTitle}">
                         お知らせタイトル
                     </p>
                     <span class="text-gray-400">›</span>
@@ -162,13 +159,6 @@
         </div>
     </div>
 
-    <div th:if="${userSession != null}" class="px-4 pb-6">
-        <div class="rounded-2xl border p-4"><h2 class="font-bold text-xl">メンバー限定のお知らせ</h2>
-            <a th:href="@{/news/members}" class="text-sm underline">一覧を見る</a>
-            <p th:if="${memberNewsList.isEmpty()}" class="py-3 text-sm text-gray-500">現在お知らせはありません。</p>
-            <a th:each="n:${memberNewsList}" th:href="@{/news/{id}(id=${n.id})}" th:text="${n.title}" class="block border-b py-3"></a>
-        </div>
-    </div>
     <!-- 写真 -->
     <div class="px-4 pb-8">
         <div class="rounded-2xl bg-white p-4 shadow-md ring-1 ring-gray-100">

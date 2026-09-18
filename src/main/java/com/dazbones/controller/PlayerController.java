@@ -24,7 +24,24 @@ import java.util.List;
 @Controller
 public class PlayerController {
 
+    @org.springframework.beans.factory.annotation.Autowired private com.dazbones.service.PlayerVisibility visibility;
+    @org.springframework.beans.factory.annotation.Autowired private jakarta.validation.Validator validator;
     private final PlayerService service;
+    @ModelAttribute("visible") public java.util.Map<String,Boolean> visible(HttpSession session){return visibility.fields((UserSession)session.getAttribute("userSession"));}
+    private void preserveHidden(PlayerForm f,Player p,HttpSession session){
+        var v=visible(session);
+        if(!v.get("name"))f.setName(p==null?"新規選手":p.getName());
+        if(!v.get("backNumber"))f.setBackNumber(p==null?null:p.getBackNumber());
+        if(!v.get("throwHand"))f.setThrowHand(p==null?null:p.getThrowHand());
+        if(!v.get("batHand"))f.setBatHand(p==null?null:p.getBatHand());
+        if(!v.get("atBats"))f.setAtBats(p==null?0:p.getAtBats());
+        if(!v.get("hits"))f.setHits(p==null?0:p.getHits());
+        if(!v.get("comment"))f.setComment(p==null?null:p.getComment());
+        if(!v.get("positions"))f.setPositions(p==null?java.util.List.of():p.getPositions().stream().map(PlayerPosition::getPosition).toList());
+    }
+    private void validate(PlayerForm f,BindingResult result){validator.validate(f).forEach(e->result.reject("invalid",e.getMessage()));}
+    private boolean inaccessible(Player p,HttpSession s){return p==null || !((UserSession)s.getAttribute("userSession")).isMaster() && !Integer.valueOf(0).equals(p.getDeleteFlg());}
+
 
     private final com.dazbones.service.ImageStorageService images;
 
@@ -40,11 +57,13 @@ public class PlayerController {
 
         UserSession user = (UserSession) session.getAttribute("userSession");
 
-        List<Player> players = (user != null && user.isAdmin())
+        List<Player> players = (user != null && user.isMaster())
                 ? service.getAll()
                 : service.getActivePlayers();
 
         if (!List.of("backNumber", "position", "average").contains(sort)) sort = "backNumber";
+        var fields=visible(session);
+        if ((sort.equals("backNumber")&&!fields.get("backNumber")) || (sort.equals("position")&&!fields.get("positions")) || (sort.equals("average")&&(!fields.get("average")||!fields.get("atBats")||!fields.get("hits")))) sort="id";
         players = new ArrayList<>(players);
         java.util.Comparator<Player> byNumber = java.util.Comparator.comparing(Player::getBackNumber,
                 java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()));
@@ -59,6 +78,7 @@ public class PlayerController {
                         case "外野手" -> 3;
                         default -> 4;
                     }).min().orElse(5));
+            case "id" -> java.util.Comparator.comparing(Player::getId);
             default -> byNumber;
         };
         players.sort(ordering.thenComparing(byNumber).thenComparing(Player::getId));
@@ -83,7 +103,7 @@ public class PlayerController {
     }
 
     @PostMapping("/players/add")
-    public String add(@Valid @ModelAttribute("playerForm") PlayerForm form,
+    public String add(@ModelAttribute("playerForm") PlayerForm form,
                       BindingResult result,
                       @RequestParam(value = "imageFile", required = false) MultipartFile imageFile,
                       HttpSession session,
@@ -94,6 +114,8 @@ public class PlayerController {
             return "error/404";
         }
 
+        preserveHidden(form, null, session);
+        validate(form,result);
         if (result.hasErrors()) {
             model.addAttribute("userSession", session.getAttribute("userSession"));
             return "playerAdd";
@@ -104,7 +126,7 @@ public class PlayerController {
 
         String uploaded = null;
         try {
-            uploaded = images.savePlayer(imageFile);
+            uploaded = visible(session).get("image") ? images.savePlayer(imageFile) : null;
             if (uploaded != null) player.setImagePath(uploaded);
             service.save(player);
         } catch (Exception e) {
@@ -128,7 +150,7 @@ public class PlayerController {
         }
 
         Player player = service.findById(id);
-        if (player == null) {
+        if (inaccessible(player,session)) {
             return "error/404";
         }
 
@@ -143,7 +165,7 @@ public class PlayerController {
 
     @PostMapping("/players/{id}/edit")
     public String update(@PathVariable Long id,
-                         @Valid @ModelAttribute("playerForm") PlayerForm form,
+                         @ModelAttribute("playerForm") PlayerForm form,
                          BindingResult result,
                          @RequestParam(value = "imageFile", required = false) MultipartFile imageFile,
                          HttpSession session,
@@ -155,10 +177,18 @@ public class PlayerController {
         }
 
         Player player = service.findById(id);
-        if (player == null) {
+        if (inaccessible(player,session)) {
             return "error/404";
         }
 
+        if (!java.util.Objects.equals(form.getVersion(), player.getVersion())) {
+            model.addAttribute("player",player);
+            model.addAttribute("userSession",session.getAttribute("userSession"));
+            model.addAttribute("errorMessage","他の画面で選手情報が更新されました。入力内容を控えて再読み込みしてください。");
+            return "playerEdit";
+        }
+        preserveHidden(form,player,session);
+        validate(form,result);
         if (result.hasErrors()) {
             model.addAttribute("player", player);
             model.addAttribute("userSession", session.getAttribute("userSession"));
@@ -168,7 +198,7 @@ public class PlayerController {
         String oldImage = player.getImagePath();
         String uploaded = null;
         try {
-            uploaded = images.savePlayer(imageFile);
+            uploaded = visible(session).get("image") ? images.savePlayer(imageFile) : null;
             applyFormToPlayer(player, form);
             if (uploaded != null) player.setImagePath(uploaded);
             service.save(player);
@@ -210,6 +240,7 @@ public class PlayerController {
 
     private PlayerForm toForm(Player player) {
         PlayerForm form = new PlayerForm();
+        form.setVersion(player.getVersion());
 
         form.setName(player.getName());
         form.setBackNumber(player.getBackNumber());
@@ -266,6 +297,6 @@ public class PlayerController {
 
     private boolean isAdmin(HttpSession session) {
         UserSession user = (UserSession) session.getAttribute("userSession");
-        return user != null && user.isAdmin();
+        return user != null && user.isMaster();
     }
 }

@@ -4,15 +4,15 @@
       th:replace="~{layout :: layout(~{::title}, ~{::section})}">
 
 <head>
-    <title>管理者コード変更 | DazBones</title>
+    <title>ログインコード変更 | DazBones</title>
 </head>
 
 <body>
 <section class="px-4 py-6">
 
     <div class="mb-5">
-        <h1 class="text-2xl font-black db-brown">管理者コード変更</h1>
-        <p class="mt-1 text-sm text-gray-500">管理者ログイン用コードを変更します</p>
+        <h1 class="text-2xl font-black db-brown">ログインコード変更</h1>
+        <p class="mt-1 text-sm text-gray-500">master・選手のコードを変更します</p>
     </div>
 
     <div class="rounded-2xl bg-white p-5 shadow-md ring-1 ring-gray-100">
@@ -34,8 +34,9 @@
                    th:name="${_csrf.parameterName}"
                    th:value="${_csrf.token}">
 
+            <label>変更対象<select name="role"><option value="master">master</option><option value="player">選手</option></select></label>
             <div>
-                <label class="mb-1 block text-sm font-bold db-brown">現在のコード</label>
+                <label class="mb-1 block text-sm font-bold db-brown">現在のmasterコード</label>
                 <input type="password"
                        name="currentCode"
                        class="w-full rounded-xl border px-4 py-3">
@@ -51,7 +52,7 @@
             <div>
                 <label class="mb-1 block text-sm font-bold db-brown">新しいコード（確認）</label>
                 <input type="password" name="confirmation" required class="w-full rounded-xl border px-4 py-3">
-                <p class="mt-2 text-sm text-red-700">変更すると全員がログアウトします。新しいコードは10文字以上・72バイト以内です。</p>
+                <p class="mt-2 text-sm text-red-700">変更すると全員がログアウトします。新しいコードは1〜72バイト以内です。</p>
             </div>
             <button type="submit"
                     class="w-full rounded-xl db-bg-brown px-4 py-3 font-black text-white">

@@ -43,8 +43,20 @@ try {
     $login=Invoke-WebRequest 'http://localhost:19080/login' -SessionVariable loginSession
     $token=[regex]::Match($login.Content,'name="_csrf"[^>]*value="([^"]+)"').Groups[1].Value
     $null=Invoke-WebRequest 'http://localhost:19080/login' -Method Post -WebSession $loginSession -Body @{code=$config.ADMIN_CODE;_csrf=$token}
-    $page=Invoke-WebRequest 'http://localhost:19080/survey/attendance' -WebSession $loginSession
-    if(!$page.Content.Contains('deployment-check')){throw 'Fresh database login/roster check failed'}
+    $page=Invoke-RestMethod 'http://localhost:19080/api/input?year=2026&month=2026-09' -WebSession $loginSession
+    if($page.players.name -notcontains 'deployment-check'){throw 'Fresh database login/roster check failed'}
+    $inputPage=Invoke-WebRequest 'http://localhost:19080/input' -WebSession $loginSession
+    $inputToken=[regex]::Match($inputPage.Content,'data-csrf="([^"]+)"').Groups[1].Value
+    if(!$inputToken){throw 'Input page CSRF token missing'}
+    $headers=@{'X-CSRF-TOKEN'=$inputToken}
+    $playerId=$page.players[0].id
+    $null=Invoke-RestMethod 'http://localhost:19080/api/input/stats' -Method Post -WebSession $loginSession -Headers $headers -Body @{playerId=$playerId;version=0;atBats=20;hits=5}
+    $null=Invoke-RestMethod 'http://localhost:19080/api/input/fee' -Method Post -WebSession $loginSession -Headers $headers -Body @{playerId=$playerId;year=2026;paid='true';comment='5000';version=-1}
+    $null=Invoke-RestMethod 'http://localhost:19080/api/input/gear' -Method Post -WebSession $loginSession -Headers $headers -Body @{name='test-bat';ownerId=$playerId;comment='test';version=-1}
+    $null=Invoke-RestMethod 'http://localhost:19080/api/input/date' -Method Post -WebSession $loginSession -Headers $headers -Body @{date='2026-09-16'}
+    $null=Invoke-RestMethod 'http://localhost:19080/api/input/attendance' -Method Post -WebSession $loginSession -Headers $headers -Body @{playerId=$playerId;date='2026-09-16';status='×';memo='test';version=-1}
+    $saved=Invoke-RestMethod 'http://localhost:19080/api/input?year=2026&month=2026-09' -WebSession $loginSession
+    if($saved.players[0].hits -ne 5 -or !$saved.fees[0].paid -or $saved.gears[0].name -ne 'test-bat' -or $saved.answers[0].status -ne '×'){throw 'Input persistence check failed'}
     & "$PSScriptRoot/Backup.ps1" -ProjectName $sourceProject -EnvFile $sourceEnv -OutputRoot (Join-Path $work "backups-$tag")
     $backup=(Get-ChildItem -LiteralPath (Join-Path $work "backups-$tag") -Directory | Sort-Object Name -Descending | Select-Object -First 1).FullName
     Invoke-CheckCompose $restoreProject $restoreEnv @('up','-d','--wait','db')
@@ -53,11 +65,16 @@ try {
     Wait-Ready 19081
     $restored=Invoke-WebRequest 'http://localhost:19081/players'
     if(!$restored.Content.Contains('deployment-check')){throw 'Restored DB row is missing'}
+    $restoredLogin=Invoke-WebRequest 'http://localhost:19081/login' -SessionVariable restoredSession
+    $restoredToken=[regex]::Match($restoredLogin.Content,'name="_csrf"[^>]*value="([^"]+)"').Groups[1].Value
+    $null=Invoke-WebRequest 'http://localhost:19081/login' -Method Post -WebSession $restoredSession -Body @{code=$config.ADMIN_CODE;_csrf=$restoredToken}
+    $restoredInput=Invoke-RestMethod 'http://localhost:19081/api/input?year=2026&month=2026-09' -WebSession $restoredSession
+    if(!$restoredInput.fees[0].paid -or $restoredInput.answers[0].memo -ne 'test'){throw 'Restored input data is missing'}
     $image=Invoke-WebRequest 'http://localhost:19081/uploads/images/restore-check.txt'
     $imageText=if($image.Content -is [byte[]]){[Text.Encoding]::UTF8.GetString($image.Content)}else{[string]$image.Content}
     if($imageText -ne 'restore-test'){throw 'Restored upload is missing or corrupted'}
     $versions=Invoke-CheckCompose $restoreProject $restoreEnv @('exec','-T','db','sh','-c','MYSQL_PWD="$MYSQL_PASSWORD" mysql -u"$MYSQL_USER" "$MYSQL_DATABASE" -N -e "SELECT version FROM flyway_schema_history WHERE success=1 ORDER BY installed_rank"')
-    if(($versions -join ',') -ne '0,1,2,3'){throw 'Unexpected migration history'}
+    if(($versions -join ',') -ne '0,1,2,3,4'){throw 'Unexpected migration history'}
     Write-Output 'PASS: Docker build runtime, blank DB migrations, login, roster, DB backup/restore and image backup/restore.'
 } finally {
     # These two random project names are created only by this isolated test; never touch the user's existing project.

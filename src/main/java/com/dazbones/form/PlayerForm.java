@@ -8,6 +8,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PlayerForm {
+    private Long version;
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
 
     @NotBlank(message = "名前は必須です")
     @Size(max = 100, message = "名前は100文字以内で入力してください")

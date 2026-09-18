@@ -57,6 +57,6 @@ public class AdminMediaController {
 
     private boolean isAdmin(HttpSession session) {
         UserSession user = getUserSession(session);
-        return user != null && user.isAdmin();
+        return user != null && user.canManage();
     }
 }

@@ -12,7 +12,7 @@
 
     <div class="mb-6 text-center">
         <h1 class="text-3xl font-black db-brown">ログイン</h1>
-        <p class="mt-2 text-sm text-gray-500">ログインIDとコードを入力してください</p>
+        <p class="mt-2 text-sm text-gray-500">ログインコードを入力してください</p>
     </div>
 
     <div class="rounded-2xl bg-white p-5 shadow-md ring-1 ring-gray-100">
@@ -39,11 +39,6 @@
                    th:name="${_csrf.parameterName}"
                    th:value="${_csrf.token}">
 
-            <div>
-                <label for="loginId" class="mb-1 block text-sm font-bold db-brown">ログインID</label>
-                <input id="loginId" name="loginId" placeholder="例：member-1" autocomplete="username" class="w-full rounded-xl border px-4 py-3">
-                <p class="mt-1 text-xs text-gray-500">管理者・共有編集者コードを使う場合は空欄にしてください。</p>
-            </div>
             <div>
                 <label class="mb-1 block text-sm font-bold db-brown">
                     ログインコード

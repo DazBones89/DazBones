@@ -29,11 +29,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.datasource.driver-class-name=org.h2.Driver",
         "spring.datasource.username=sa", "spring.datasource.password=",
         "spring.jpa.hibernate.ddl-auto=create-drop", "spring.jpa.open-in-view=false",
-        "app.auth.admin-code=test-admin-code", "app.auth.editor-code=test-editor-code"
+        "app.auth.master-code=test-admin-code", "app.auth.player-code=test-editor-code"
 })
 @AutoConfigureMockMvc
 class SiteIntegrationTest {
     @Autowired MockMvc mvc;
+    @Autowired com.dazbones.service.InputService inputService;
+    @Autowired com.dazbones.service.PlayerVisibility visibility;
+    @Autowired SiteSettingRepository settings;
+    @Autowired AttendanceDateRepository extraDates;
     @Autowired AuditEntryRepository audits;
     @Autowired jakarta.persistence.EntityManagerFactory entityManagerFactory;
     @Autowired AttendanceAnswerRepository attendanceAnswers;
@@ -59,6 +63,7 @@ class SiteIntegrationTest {
 
     @BeforeEach
     void cleanDatabase() {
+        settings.deleteAll(); extraDates.deleteAll();
         audits.deleteAll();
         attendanceAnswers.deleteAll();
         annualFees.deleteAll(); gears.deleteAll(); holidays.deleteAll();
@@ -72,80 +77,13 @@ class SiteIntegrationTest {
         news.deleteAll();
     }
 
-    @Test
-    void attendanceShowsOnlySortedWeekendsAndRegisteredHolidays() throws Exception {
-        holidayService.addHoliday(LocalDate.of(2026, 9, 21), "祝日");
-        assertThat(attendanceService.dates(java.time.YearMonth.of(2026, 9))).containsExactly(
-                LocalDate.of(2026,9,5), LocalDate.of(2026,9,6), LocalDate.of(2026,9,12), LocalDate.of(2026,9,13),
-                LocalDate.of(2026,9,19), LocalDate.of(2026,9,20), LocalDate.of(2026,9,21), LocalDate.of(2026,9,26), LocalDate.of(2026,9,27));
-        var admin = login("admin");
-        mvc.perform(get("/survey").session(admin)).andExpect(content().string(containsString("その他アンケート")))
-                .andExpect(content().string(containsString("/survey/attendance")));
-        mvc.perform(get("/survey/attendance").session(admin).param("month", "2026-09"))
-                .andExpect(status().isOk()).andExpect(content().string(containsString("在籍中の選手がいません")));
-        mvc.perform(get("/survey/attendance")).andExpect(redirectedUrl("/login"));
-        mvc.perform(get("/survey/attendance").session(admin).param("month", "bad")).andExpect(status().isBadRequest());
-    }
 
-    @Test
-    void attendanceMemberCanOnlyAnswerLinkedPlayerAndAdminCanProxy() throws Exception {
-        var a = player("出席選手A", 1, 1, "投手"); var b = player("出席選手B", 2, 1, "捕手");
-        var m = member("本人"); m.setPlayerId(a.getId()); members.save(m);
-        var memberSession = memberLogin(m.getId(), credentialService.issueMemberCode(m.getId()));
-        mvc.perform(post("/survey/attendance/answer").session(memberSession).with(csrf())
-                .param("playerId", a.getId().toString()).param("date", "2026-09-19").param("status", "○")
-                .param("memo", "午前のみ").param("version", "-1")).andExpect(status().is3xxRedirection());
-        assertThat(attendanceAnswers.findByPlayerIdAndTargetDate(a.getId(), LocalDate.of(2026,9,19)).orElseThrow().getMemo()).isEqualTo("午前のみ");
-        mvc.perform(get("/survey/attendance").session(memberSession).param("month", "2026-09").param("playerId", b.getId().toString()))
-                .andExpect(status().isOk()).andExpect(model().attribute("selectedPlayer", a.getId()));
-        mvc.perform(post("/survey/attendance/answer").session(memberSession).with(csrf())
-                .param("playerId", b.getId().toString()).param("date", "2026-09-19").param("status", "△").param("version", "-1"))
-                .andExpect(status().isForbidden());
-        var admin = login("admin");
-        mvc.perform(post("/survey/attendance/answer").session(admin).with(csrf())
-                .param("playerId", b.getId().toString()).param("date", "2026-09-19").param("status", "△").param("version", "-1"))
-                .andExpect(status().is3xxRedirection());
-        mvc.perform(get("/survey/attendance").session(admin).param("month", "2026-09"))
-                .andExpect(status().isOk()).andExpect(content().string(containsString("午前のみ")))
-                .andExpect(content().string(containsString("name=\"date\" value=\"2026-09-19\"")))
-                .andExpect(content().string(containsString("id=\"day-2026-09-19\"")));
-        assertThat(attendanceAnswers.count()).isEqualTo(2);
-    }
 
-    @Test
-    void attendanceRejectsWeekdaysInvalidAnswersAndStaleUpdates() throws Exception {
-        var p = player("検証選手", 1, 1, "投手");
-        var session = login("admin"); var user = (UserSession)session.getAttribute("userSession");
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> attendanceService.save(user,p.getId(),LocalDate.of(2026,9,16),"○","",-1L)).isInstanceOf(IllegalArgumentException.class);
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> attendanceService.save(user,p.getId(),LocalDate.of(2026,9,19),"×","",-1L)).isInstanceOf(IllegalArgumentException.class);
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> attendanceService.save(user,p.getId(),LocalDate.of(2026,9,19),"○","a".repeat(501),-1L)).isInstanceOf(IllegalArgumentException.class);
-        attendanceService.save(user,p.getId(),LocalDate.of(2026,9,19),"○","",-1L);
-        mvc.perform(post("/survey/attendance/answer").session(session).with(csrf())
-                .param("playerId",p.getId().toString()).param("date","2026-09-19").param("status","△").param("memo","再入力").param("version","-1"))
-                .andExpect(flash().attributeExists("errorMessage")).andExpect(flash().attribute("draftMemo","再入力"));
-        assertThat(attendanceAnswers.findAll().get(0).getStatus()).isEqualTo("○");
-        mvc.perform(post("/survey/attendance/answer").session(session)
-                .param("playerId",p.getId().toString()).param("date","2026-09-19").param("status","○").param("version","0"))
-                .andExpect(status().isForbidden());
-        p.setDeleteFlg(1);players.save(p);
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> attendanceService.save(user,p.getId(),LocalDate.of(2026,9,19),"○","",0L)).isInstanceOf(IllegalArgumentException.class);
-    }
 
-    @Test
-    void attendanceBindingIsAdminOnlyAndUniqueAndCanBeClearedAfterDeletion() throws Exception {
-        var p = player("紐付け選手",1,1,"投手"); var m = member("紐付け本人"); var other = member("別本人");
-        var admin = login("admin");
-        mvc.perform(post("/admin/attendance/bind").session(login("editor")).with(csrf())
-                .param("memberId",m.getId().toString()).param("playerId",p.getId().toString())).andExpect(status().isForbidden());
-        mvc.perform(post("/admin/attendance/bind").session(admin).with(csrf())
-                .param("memberId",m.getId().toString()).param("playerId",p.getId().toString())).andExpect(flash().attributeExists("successMessage"));
-        mvc.perform(post("/admin/attendance/bind").session(admin).with(csrf())
-                .param("memberId",other.getId().toString()).param("playerId",p.getId().toString())).andExpect(flash().attributeExists("errorMessage"));
-        memberService.deleteMember(m.getId());
-        mvc.perform(post("/admin/attendance/bind").session(admin).with(csrf()).param("memberId",m.getId().toString()))
-                .andExpect(flash().attributeExists("successMessage"));
-        assertThat(members.findById(m.getId()).orElseThrow().getPlayerId()).isNull();
-    }
+
+
+
+
 
     @Test
     void staleScheduleUpdatesAndDeletesAreRejected() throws Exception {
@@ -203,11 +141,11 @@ class SiteIntegrationTest {
         mvc.perform(post("/admin/schedules").session(session).with(csrf()).param("title","非公開の本文").param("eventDate","2026-09-19"))
                 .andExpect(status().is3xxRedirection());
         var audit=audits.findAll().get(0);
-        assertThat(audit.getLoginId()).isEqualTo("editor");assertThat(audit.getOutcome()).isEqualTo("完了");
+        assertThat(audit.getLoginId()).isEqualTo("player");assertThat(audit.getOutcome()).isEqualTo("完了");
         assertThat(audit.getTarget()).isEqualTo("/admin/schedules");
         mvc.perform(get("/admin/audit").session(session)).andExpect(status().isForbidden());
         mvc.perform(get("/admin/audit").session(login("admin"))).andExpect(status().isOk())
-                .andExpect(content().string(containsString("editor"))).andExpect(content().string(not(containsString("非公開の本文"))));
+                .andExpect(content().string(containsString("player"))).andExpect(content().string(not(containsString("非公開の本文"))));
     }
 
     @Test
@@ -272,15 +210,7 @@ class SiteIntegrationTest {
         assertThat(schedules.count()).isZero();
     }
 
-    @Test
-    void editorCannotUseAdminOperations() throws Exception {
-        MockHttpSession session = login("editor");
-        mvc.perform(get("/admin/news").session(session)).andExpect(status().isForbidden());
-        mvc.perform(post("/gear/delete").session(session).with(csrf()).param("id", "1"))
-                .andExpect(status().isForbidden());
-        mvc.perform(get("/admin/schedules").session(session)).andExpect(status().isOk());
-        mvc.perform(get("/admin/survey-members").session(session)).andExpect(status().isOk());
-    }
+
 
     @Test
     void anonymousApiIsUnauthorized() throws Exception {
@@ -310,7 +240,7 @@ class SiteIntegrationTest {
 
     @Test
     void renderedCalendarsIncludeAssetsAndInitialization() throws Exception {
-        for (String path : new String[]{"/schedule", "/survey"}) {
+        for (String path : new String[]{"/schedule"}) {
             mvc.perform(get(path).session(login("editor"))).andExpect(status().isOk())
                     .andExpect(content().string(containsString("/vendor/fullcalendar-6.1.10.min.js")))
                     .andExpect(content().string(containsString("new FullCalendar.Calendar")));
@@ -372,12 +302,7 @@ class SiteIntegrationTest {
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.success").value(false));
     }
 
-    @Test
-    void surveyAcceptsOffsetDateRanges() throws Exception {
-        mvc.perform(get("/api/survey/day-types").session(login("editor"))
-                        .param("start", "2026-09-12T00:00:00+09:00").param("end", "2026-09-14T00:00:00+09:00"))
-                .andExpect(status().isOk()).andExpect(jsonPath("$['2026-09-12']").value("auto"));
-    }
+
 
     @Test
     void futureNewsCannotBeReadByDirectUrl() throws Exception {
@@ -402,22 +327,7 @@ class SiteIntegrationTest {
                 .andExpect(redirectedUrl("/main")).andReturn().getRequest().getSession(false);
     }
 
-    @Test
-    void memberMayAnswerOnlyForSelfAndCannotCreateOrDeleteSurvey() throws Exception {
-        SurveyMember alice=member("本人"),bob=member("別人");
-        MockHttpSession session=memberLogin(alice.getId(),credentialService.issueMemberCode(alice.getId()));
-        mvc.perform(get("/survey").session(session)).andExpect(status().isOk())
-                .andExpect(content().string(not(containsString("id=\"manualSurveyTitle\""))));
-        mvc.perform(post("/survey/answer").session(session).with(csrf()).param("date","2026-09-12")
-                .param("memberId",alice.getId().toString()).param("status","参加")).andExpect(status().isOk());
-        mvc.perform(post("/survey/answer").session(session).with(csrf()).param("date","2026-09-12")
-                .param("memberId",bob.getId().toString()).param("status","参加")).andExpect(status().isForbidden());
-        mvc.perform(get("/api/survey/detail").session(session).param("date","2026-09-12").param("memberId",bob.getId().toString()))
-                .andExpect(status().isForbidden());
-        for(String path:new String[]{"/survey/manual","/survey/manual/delete"})
-            mvc.perform(post(path).session(session).with(csrf()).param("date","2026-09-12")).andExpect(status().isForbidden());
-        assertThat(answers.count()).isEqualTo(1);
-    }
+
 
     @Test
     void sharedEditorCannotImpersonateOrCreateSurvey() throws Exception {
@@ -427,16 +337,7 @@ class SiteIntegrationTest {
         mvc.perform(post("/survey/manual").session(session).with(csrf()).param("date","2026-09-14")).andExpect(status().isForbidden());
     }
 
-    @Test
-    void adminCanCreateProxyAnswerAndDeleteWeekdaySurvey() throws Exception {
-        SurveyMember m=member("代理回答先");MockHttpSession session=login("admin");
-        mvc.perform(post("/survey/manual").session(session).with(csrf()).param("date","2026-09-14").param("title","臨時活動"))
-                .andExpect(status().isOk());
-        mvc.perform(post("/survey/answer").session(session).with(csrf()).param("date","2026-09-14")
-                .param("memberId",m.getId().toString()).param("status","参加")).andExpect(status().isOk());
-        mvc.perform(post("/survey/manual/delete").session(session).with(csrf()).param("date","2026-09-14")).andExpect(status().isOk());
-        assertThat(answers.count()).isZero();assertThat(events.count()).isZero();
-    }
+
 
     @Test
     void deletingManualWeekendPreservesAutomaticAnswers() {
@@ -446,50 +347,18 @@ class SiteIntegrationTest {
         assertThat(answers.count()).isEqualTo(1);assertThat(surveyService.getSummary(date)).containsEntry("type","auto");
     }
 
-    @Test
-    void deletingAndRestoringMemberRequiresFreshCode() throws Exception {
-        var m=member("復元対象");String code=credentialService.issueMemberCode(m.getId());
-        var oldSession=memberLogin(m.getId(),code);
-        memberService.deleteMember(m.getId());memberService.restore(m.getId());
-        String newCode=credentialService.issueMemberCode(m.getId());
-        mvc.perform(get("/api/survey/day-types").session(oldSession).param("start","2026-09-12").param("end","2026-09-13"))
-                .andExpect(status().isUnauthorized());
-        assertThat(credentialService.authenticate("member-"+m.getId(),code)).isNull();
-        assertThat(credentialService.authenticate("member-"+m.getId(),newCode)).isNotNull();
-    }
 
-    @Test
-    void codeIssuanceIsAdminOnlyAndRendersOneTimeCode() throws Exception {
-        var m=member("コード発行先");
-        mvc.perform(post("/admin/survey-members/{id}/code",m.getId()).session(login("editor")).with(csrf())).andExpect(status().isForbidden());
-        var response=mvc.perform(post("/admin/survey-members/{id}/code",m.getId()).session(login("admin")).with(csrf()))
-                .andExpect(redirectedUrl("/admin/survey-members")).andReturn();
-        assertThat(response.getFlashMap().get("issuedCode")).isNotNull();
-        mvc.perform(get("/admin/survey-members").session(login("admin")).flashAttrs(response.getFlashMap()))
-                .andExpect(status().isOk()).andExpect(content().string(containsString("コード発行")));
-    }
 
-    @Test
-    void adminCodeChangeRevokesAllExistingSessionsAndPersistsNewCode() throws Exception {
-        var admin=login("admin");var editor=login("editor");var otherAdmin=login("admin");
-        var m=member("ログイン中");var memberSession=memberLogin(m.getId(),credentialService.issueMemberCode(m.getId()));
-        mvc.perform(post("/admin/code").session(admin).with(csrf()).param("currentCode","test-admin-code")
-                .param("newCode","replacement-code").param("confirmation","replacement-code"))
-                .andExpect(redirectedUrl("/login"));
-        for(var old:new MockHttpSession[]{editor,otherAdmin,memberSession})
-            mvc.perform(get("/api/survey/day-types").session(old).param("start","2026-09-12").param("end","2026-09-13"))
-                    .andExpect(status().isUnauthorized());
-        credentialService.initialize(); // restart bootstrap must not overwrite changed credentials
-        assertThat(credentialService.authenticate(null,"test-admin-code")).isNull();
-        assertThat(credentialService.authenticate(null,"replacement-code").isAdmin()).isTrue();
-    }
+
+
+
 
     @Test
     void incorrectCurrentCodeDoesNotRevokeSessions() throws Exception {
         var admin=login("admin");
         mvc.perform(post("/admin/code").session(admin).with(csrf()).param("currentCode","wrong")
                 .param("newCode","replacement-code").param("confirmation","replacement-code"))
-                .andExpect(status().isOk()).andExpect(content().string(containsString("現在のコードが違います")));
+                .andExpect(status().isOk()).andExpect(content().string(containsString("現在のmasterコードが違います")));
         mvc.perform(get("/admin/news").session(admin)).andExpect(status().isOk());
     }
 
@@ -499,7 +368,7 @@ class SiteIntegrationTest {
         mvc.perform(get("/news")).andExpect(status().isOk()).andExpect(content().string(not(containsString("限定情報"))));
         mvc.perform(get("/news/{id}",n.getId())).andExpect(status().isNotFound());
         mvc.perform(get("/news/members")).andExpect(redirectedUrl("/login"));
-        mvc.perform(get("/news/members").session(login("editor"))).andExpect(status().isOk()).andExpect(content().string(containsString("限定情報")));
+        mvc.perform(get("/news").session(login("editor"))).andExpect(status().isOk()).andExpect(content().string(containsString("限定情報")));
         mvc.perform(get("/news/{id}",n.getId()).session(login("editor"))).andExpect(status().isOk());
         mvc.perform(get("/")).andExpect(status().isOk()).andExpect(content().string(not(containsString("限定情報"))));
     }
@@ -516,36 +385,9 @@ class SiteIntegrationTest {
         assertThat(news.findAll().get(0).getAudience()).isEqualTo("MEMBERS");
     }
 
-    @Test
-    void annualFeesKeepYearsAndDisplayPersonalAndTeamTotals() throws Exception {
-        var p=player("年会費選手",1,1,"投手");var session=login("admin");
-        for(int year:new int[]{2025,2026}) {
-            mvc.perform(post("/fee/update").session(session).with(csrf()).param("playerId",p.getId().toString())
-                    .param("fiscalYear",String.valueOf(year)).param("amount","10000").param("paidAmount",year==2025?"10000":"4000"))
-                    .andExpect(redirectedUrl("/fee?year="+year));
-        }
-        assertThat(annualFees.count()).isEqualTo(2);
-        mvc.perform(get("/fee").session(session).param("year","2026")).andExpect(status().isOk())
-                .andExpect(content().string(containsString("20,000円"))).andExpect(content().string(containsString("14,000円")))
-                .andExpect(content().string(containsString("6,000円")));
-        mvc.perform(get("/fee/player/{id}",p.getId()).session(session)).andExpect(status().isOk())
-                .andExpect(content().string(containsString("2025年度"))).andExpect(content().string(containsString("2026年度")));
-    }
 
-    @Test
-    void annualFeeRejectsOverpaymentAndStaleUpdate() throws Exception {
-        var p=player("請求先",1,1,"投手");var session=login("admin");
-        mvc.perform(post("/fee/update").session(session).with(csrf()).param("playerId",p.getId().toString())
-                .param("fiscalYear","2026").param("amount","100").param("paidAmount","200"))
-                .andExpect(status().isOk()).andExpect(content().string(containsString("入金額は請求額以下")));
-        assertThat(annualFees.count()).isZero();
-        mvc.perform(post("/fee/update").session(session).with(csrf()).param("playerId",p.getId().toString())
-                .param("fiscalYear","2026").param("amount","100").param("paidAmount","0"));
-        mvc.perform(post("/fee/update").session(session).with(csrf()).param("playerId",p.getId().toString())
-                .param("fiscalYear","2026").param("amount","200").param("paidAmount","0"))
-                .andExpect(status().isOk()).andExpect(content().string(containsString("別の操作で更新")));
-        assertThat(annualFees.findAll().get(0).getAmount()).isEqualTo(100);
-    }
+
+
 
     @Test
     void yearlyActivityHistoryExcludesOtherYearsAndFutureDates() throws Exception {
@@ -564,15 +406,7 @@ class SiteIntegrationTest {
         assertThat(holidayService.importCsv(valid)).isEqualTo(1);
     }
 
-    @Test
-    void gearUpdateKeepsCreationDateAndDeletedOwner() throws Exception {
-        var p=player("所有者",1,1,"投手");Gear g=new Gear();g.setName("バット");g.setOwnerId(p.getId());g=gears.save(g);
-        var original=gears.findById(g.getId()).orElseThrow().getCreatedAt();p.setDeleteFlg(1);players.save(p);
-        mvc.perform(post("/gear/save").session(login("editor")).with(csrf()).param("id",g.getId().toString())
-                .param("name","更新バット").param("ownerId",p.getId().toString())).andExpect(redirectedUrl("/gear"));
-        var updated=gears.findById(g.getId()).orElseThrow();assertThat(updated.getCreatedAt()).isEqualTo(original);assertThat(updated.getOwnerId()).isEqualTo(p.getId());
-        mvc.perform(get("/gear").session(login("editor"))).andExpect(status().isOk()).andExpect(content().string(containsString("所有者（退部）")));
-    }
+
 
     @Test
     void invalidPlayerStatsAndFakeImageAreNotSaved() throws Exception {
@@ -613,7 +447,7 @@ class SiteIntegrationTest {
     @Test
     void playerPositionsCanBeUpdated() throws Exception {
         Player p = player("元の名前", 10, 2, "投手");
-        mvc.perform(post("/players/{id}/edit", p.getId()).session(login("editor")).with(csrf())
+        mvc.perform(post("/players/{id}/edit", p.getId()).session(login("editor")).with(csrf()).param("version",p.getVersion().toString())
                         .param("name", "新しい名前").param("positions", "捕手").param("atBats", "10").param("hits", "3"))
                 .andExpect(redirectedUrl("/players"));
         Player updated = players.findById(p.getId()).orElseThrow();
@@ -655,5 +489,72 @@ class SiteIntegrationTest {
         member.setDeleteFlg(1);
         members.save(member);
         assertThat(surveyService.getSummary(day)).containsEntry("参加", 0L).containsEntry("未回答", 0L);
+    }
+
+    @Test void sharedRolesAndRetiredLogins() throws Exception {
+        var session=login("editor");
+        for(String path:new String[]{"/admin/news","/admin/schedules","/admin/upload/group-photo","/input"})
+            mvc.perform(get(path).session(session)).andExpect(status().isOk());
+        for(String path:new String[]{"/admin/holidays","/admin/code","/admin/audit","/admin/player-settings","/admin/survey-members"})
+            mvc.perform(get(path).session(session)).andExpect(status().isForbidden());
+        var m=member("旧本人");String old=credentialService.issueMemberCode(m.getId());
+        assertThat(credentialService.authenticate("member-"+m.getId(),old)).isNull();
+        mvc.perform(get("/survey").session(session)).andExpect(redirectedUrl("/survey/attendance"));
+        mvc.perform(get("/survey/attendance").session(session)).andExpect(redirectedUrl("/input?tab=attendance"));
+    }
+    @Test void codeChangeRevokesBothRolesAndPersists() throws Exception {
+        var master=login("admin");var player=login("editor");var other=login("admin");
+        mvc.perform(post("/admin/code").session(master).with(csrf()).param("role","player").param("currentCode","test-admin-code").param("newCode","new-shared").param("confirmation","new-shared")).andExpect(redirectedUrl("/login"));
+        for(var session:new MockHttpSession[]{player,other})mvc.perform(get("/api/input").session(session).param("year","2026").param("month","2026-09")).andExpect(status().isUnauthorized());
+        credentialService.initialize();assertThat(credentialService.authenticate(null,"test-editor-code")).isNull();assertThat(credentialService.authenticate(null,"new-shared").getRole()).isEqualTo("player");
+    }
+    @Test void attendanceAllowsSharedNamesCrossAndManualWeekdays() throws Exception {
+        var a=player("選手A",1,1,"投手");var b=player("選手B",2,1,"捕手");var session=login("editor");
+        mvc.perform(post("/api/input/date").session(session).with(csrf()).param("date","2026-09-16")).andExpect(status().isOk());
+        for(var p:java.util.List.of(a,b))mvc.perform(post("/api/input/attendance").session(session).with(csrf()).param("playerId",p.getId().toString()).param("date","2026-09-16").param("status","×").param("memo","欠席").param("version","-1")).andExpect(status().isOk()).andExpect(jsonPath("$.version").value(0));
+        assertThat(attendanceAnswers.count()).isEqualTo(2);
+        mvc.perform(get("/api/input").session(session).param("year","2026").param("month","2026-09")).andExpect(status().isOk()).andExpect(jsonPath("$.dates",org.hamcrest.Matchers.hasItem("2026-09-16"))).andExpect(jsonPath("$.answers.length()").value(2));
+        mvc.perform(post("/api/input/attendance").session(session).with(csrf()).param("playerId",a.getId().toString()).param("date","2026-09-16").param("status","○").param("version","-1")).andExpect(status().isConflict());
+    }
+    @Test void feesPreserveYearCommentsAndRejectStaleSaves() throws Exception {
+        var p=player("部費選手",1,1,"投手");var u=(UserSession)login("editor").getAttribute("userSession");
+        inputService.fee(u,p.getId(),2025,true,"5000円",-1L);inputService.fee(u,p.getId(),2026,false,"",-1L);
+        assertThat(annualFees.findByPlayerIdAndFiscalYear(p.getId(),2025).orElseThrow().isPaid()).isTrue();
+        assertThat(annualFees.findByPlayerIdAndFiscalYear(p.getId(),2026).orElseThrow().isPaid()).isFalse();
+        org.assertj.core.api.Assertions.assertThatThrownBy(()->inputService.fee(u,p.getId(),2026,true,"",-1L)).isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+        assertThat(annualFees.findByPlayerIdAndFiscalYear(p.getId(),2025).orElseThrow().getComment()).isEqualTo("5000円");
+    }
+    @Test void hiddenFieldsAreNotRenderedOrOverwritten() throws Exception {
+        var p=player("非公開氏名",1,3,"投手");visibility.set("name",false);visibility.set("hits",false);var session=login("editor");
+        mvc.perform(get("/players")).andExpect(content().string(not(containsString("非公開氏名"))));
+        mvc.perform(get("/players/{id}/edit",p.getId()).session(session)).andExpect(content().string(not(containsString("非公開氏名")))).andExpect(content().string(not(containsString("name=\"hits\""))));
+        mvc.perform(get("/api/input").session(session).param("year","2026").param("month","2026-09")).andExpect(content().string(not(containsString("非公開氏名")))).andExpect(jsonPath("$.players[0].hits").doesNotExist()).andExpect(jsonPath("$.players[0].average").doesNotExist());
+        mvc.perform(post("/players/{id}/edit",p.getId()).session(session).with(csrf()).param("version",p.getVersion().toString()).param("name","改ざん").param("hits","9").param("atBats","10")).andExpect(redirectedUrl("/players"));
+        var saved=players.findById(p.getId()).orElseThrow();assertThat(saved.getName()).isEqualTo("非公開氏名");assertThat(saved.getHits()).isEqualTo(3);
+        mvc.perform(post("/api/input/stats").session(session).with(csrf()).param("playerId",p.getId().toString()).param("hits","9").param("version",saved.getVersion().toString())).andExpect(status().isForbidden());
+        mvc.perform(get("/players/{id}/edit",p.getId()).session(login("admin"))).andExpect(content().string(containsString("非公開氏名")));
+    }
+    @Test void onlyMasterCanHidePlayersAndHistoryIsRetained() throws Exception {
+        var p=player("表示切替",1,1,"投手");var session=login("editor");var master=login("admin");var u=(UserSession)master.getAttribute("userSession");inputService.fee(u,p.getId(),2026,true,"支払済み",-1L);
+        mvc.perform(post("/players/{id}/visibility",p.getId()).session(session).with(csrf()).param("visible","false")).andExpect(status().isForbidden());
+        mvc.perform(post("/players/{id}/visibility",p.getId()).session(master).with(csrf()).param("visible","false")).andExpect(status().isOk());
+        assertThat(players.findById(p.getId()).orElseThrow().getDeleteFlg()).isEqualTo(1);assertThat(annualFees.count()).isEqualTo(1);
+        mvc.perform(get("/api/input").session(session).param("year","2026").param("month","2026-09")).andExpect(jsonPath("$.players.length()").value(0));
+        inputService.visible(u,p.getId(),true);assertThat(players.findActivePlayers()).hasSize(1);
+    }
+    @Test void autosaveStatsAndGearValidateAndRejectConflicts() throws Exception {
+        var p=player("入力選手",1,1,"投手");var u=(UserSession)login("editor").getAttribute("userSession");
+        var version=inputService.stats(u,p.getId(),20,5,p.getVersion());assertThat(players.findById(p.getId()).orElseThrow().getHits()).isEqualTo(5);
+        org.assertj.core.api.Assertions.assertThatThrownBy(()->inputService.stats(u,p.getId(),20,6,p.getVersion())).isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+        var result=inputService.gear(u,null,"バット",p.getId(),"木製",-1L,false);Long id=(Long)result.get("id");
+        inputService.gear(u,id,"バット",null,"共有",(Long)result.get("version"),false);
+        org.assertj.core.api.Assertions.assertThatThrownBy(()->inputService.gear(u,id,"",null,"",(Long)result.get("version"),true)).isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+        var g=gears.findById(id).orElseThrow();inputService.gear(u,id,"",null,"",g.getVersion(),true);assertThat(gears.count()).isZero();
+    }
+    @Test void manualDatesRemainSortedUniqueAndYearLimited() throws Exception {
+        var u=(UserSession)login("editor").getAttribute("userSession");inputService.date(u,LocalDate.of(2026,9,19));inputService.date(u,LocalDate.of(2026,9,16));
+        holidayService.addHoliday(LocalDate.of(2026,9,21),"祝日");
+        assertThat(attendanceService.dates(java.time.YearMonth.of(2026,9))).isSorted().doesNotHaveDuplicates().contains(LocalDate.of(2026,9,16),LocalDate.of(2026,9,21));
+        org.assertj.core.api.Assertions.assertThatThrownBy(()->inputService.date(u,LocalDate.of(2101,1,1))).isInstanceOf(IllegalArgumentException.class);
     }
 }

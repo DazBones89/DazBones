@@ -10,11 +10,11 @@ Java 17 / Spring Boot / MySQLで動作するチームサイトです。
 spring.datasource.url=jdbc:mysql://localhost:3306/dazbones_db?serverTimezone=Asia/Tokyo
 spring.datasource.username=dbuser
 spring.datasource.password=YOUR_DB_PASSWORD
-app.auth.admin-code=YOUR_ADMIN_CODE
-app.auth.editor-code=YOUR_EDITOR_CODE
+app.auth.master-code=YOUR_MASTER_CODE
+app.auth.player-code=YOUR_PLAYER_CODE
 ```
 
-管理者と編集者には異なるコードを指定してください。未設定の権限ではログインできません。コードはUTF-8で72バイト以内にしてください。
+masterと選手には異なるコードを指定してください。未設定の権限ではログインできません。コードはUTF-8で72バイト以内にしてください。
 
 ```powershell
 .\gradlew.bat bootRun
@@ -24,7 +24,7 @@ app.auth.editor-code=YOUR_EDITOR_CODE
 
 ローカル設定ファイルを置かない環境では `DB_URL`、`DB_USERNAME`、`DB_PASSWORD`、`ADMIN_CODE`、`EDITOR_CODE`、必要に応じて `PORT`、`UPLOAD_DIR` を環境変数で設定できます。`config/local.properties` がある場合、そのファイルの同名設定が優先されます。
 
-DB移行は、バックアップ後に `./gradlew.bat bootRun --args="--spring.flyway.enabled=true"` で実行します。通常のローカル起動では移行は無効です。V0に空DB用の初期スキーマ、V1以降に差分移行を含みます。既存のbaseline 0環境ではV0は実行されません。ローカルDBはV3まで適用済みです。
+DB移行は、バックアップ後に `./gradlew.bat bootRun --args="--spring.flyway.enabled=true"` で実行します。通常のローカル起動では移行は無効です。V0に空DB用の初期スキーマ、V1以降に差分移行を含みます。既存のbaseline 0環境ではV0は実行されません。ローカルDBはV4まで適用済みです。
 
 ## 公開用Docker構成・画面資産
 
@@ -32,20 +32,23 @@ DB移行は、バックアップ後に `./gradlew.bat bootRun --args="--spring.f
 
 CSSとFullCalendarはローカル配信します。テンプレートやスタイルを変更した際は `npm ci --ignore-scripts`、`npm run build` で資産を再生成してください。生成物はGit管理しているため、通常のGradle起動にNode.jsは不要です。
 
-今回の①②③の変更と検証結果は [実装メモ](docs/phase3-implementation.md) にまとめています。
+最新の権限・一括入力・部費・出欠確認の仕様は [現行仕様](docs/shared-input-spec.md) を参照してください。
+
+以前の①②③の変更と検証結果は [実装メモ](docs/phase3-implementation.md) にまとめています。
 
 ## テスト
 
 ```powershell
 .\gradlew.bat test
+npm test
 ```
 
-統合テストは専用のインメモリH2データベースを使い、ローカル設定ファイルを読み込みません。通常のMySQLデータには触れません。
+統合テストは専用のインメモリH2データベースとテスト用認証コードを明示して実行します。通常のMySQLデータには触れません。
 
 ## 認証
 
-ログインは `/login` のフォームから行います。権限付与用の直接URLはありません。ログアウトと更新操作にはCSRFトークンが必要です。コードはDBにBCryptハッシュで保存します。設定ファイルの共有コードは初回登録時のみ使用し、画面で変更した管理者コードを再起動時に上書きしません。管理者・編集者はログインIDを空欄にします。メンバーは管理者が回答者管理で発行した本人用ID・コードを使用します。
+ログインは `/login` のフォームから行います。権限付与用の直接URLはありません。ログアウトと更新操作にはCSRFトークンが必要です。コードはDBにBCryptハッシュで保存します。設定ファイルの共有コードは初回登録時のみ使用し、画面で変更した管理者コードを再起動時に上書きしません。masterと選手は共通コードのみでログインします。旧管理者・編集者・本人用IDは利用できません。`ADMIN_CODE` はmaster、`EDITOR_CODE` は選手の初期コードに対応します。
 
-以前のコード・DBパスワードはGit履歴には残ります。本番公開前の値の交換が必要です。今回のローカル設定移行では、既存環境との互換性のため値そのものは変更していません。
+以前のコード・DBパスワードはGit履歴には残ります。本番公開前の値の交換が必要です。今回の共有ログインコードはローカル設定にのみ保存し、Gitへは含めていません。
 
 詳細な残課題は `docs/completion-review-2026-09-10.md`、今回の対応内容は `docs/implementation-progress-2026-09-10.md` を参照してください。

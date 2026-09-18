@@ -16,7 +16,7 @@ public class AnnualFeeService {
     public List<Integer> years(){var years=new TreeSet<Integer>(Comparator.reverseOrder());years.add(java.time.LocalDate.now().getYear());years.addAll(repo.years());return new ArrayList<>(years);}
     public Totals totals(List<AnnualFee> rows){return new Totals(rows.stream().mapToLong(AnnualFee::getAmount).sum(),rows.stream().mapToLong(AnnualFee::getPaidAmount).sum());}
     public Totals team(){return totals(repo.findAll());}
-    public long unpaidCount(){return repo.countUnpaid(java.time.LocalDate.now().getYear());}
+    public long unpaidCount(){var paid=year(java.time.LocalDate.now().getYear()).stream().filter(AnnualFee::isPaid).map(AnnualFee::getPlayerId).collect(java.util.stream.Collectors.toSet());return players.findActivePlayers().stream().filter(p->!paid.contains(p.getId())).count();}
     @Transactional
     public void save(AnnualFeeForm form){
         var player=players.lockForFee(form.getPlayerId()).orElseThrow(()->new IllegalArgumentException("選手が見つかりません"));

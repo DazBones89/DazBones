@@ -8,6 +8,8 @@ import java.util.List;
 @Entity
 @Table(name = "players")
 public class Player {
+    @Version private Long version;
+    public Long getVersion(){return version;}
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

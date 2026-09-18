@@ -20,7 +20,7 @@ public class NewsController {
     @GetMapping("/news")
     public String list(Model model, HttpSession session) {
 
-        model.addAttribute("newsList", service.getAllPublished());
+        model.addAttribute("newsList", service.visible(session.getAttribute("userSession") != null));
         model.addAttribute("userSession", session.getAttribute("userSession"));
 
         model.addAttribute("audience", "PUBLIC");
@@ -29,10 +29,7 @@ public class NewsController {
 
     @GetMapping("/news/members")
     public String members(Model model, HttpSession session) {
-        model.addAttribute("newsList", service.published("MEMBERS"));
-        model.addAttribute("audience", "MEMBERS");
-        model.addAttribute("userSession", session.getAttribute("userSession"));
-        return "news";
+        return "redirect:/news";
     }
 
     @GetMapping("/news/{id}")

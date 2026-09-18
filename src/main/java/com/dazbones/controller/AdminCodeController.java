@@ -16,9 +16,9 @@ public class AdminCodeController {
         model.addAttribute("userSession",session.getAttribute("userSession")); return "adminCode";
     }
     @PostMapping("/admin/code")
-    public String change(@RequestParam String currentCode,@RequestParam String newCode,@RequestParam String confirmation,
+    public String change(@RequestParam(defaultValue="master") String role,@RequestParam String currentCode,@RequestParam String newCode,@RequestParam String confirmation,
                          HttpSession session,Model model,RedirectAttributes flash){
-        try { credentials.changeAdminCode(currentCode,newCode,confirmation); }
+        try { credentials.changeCode(role,currentCode,newCode,confirmation); }
         catch(IllegalArgumentException e){model.addAttribute("errorMessage",e.getMessage()); return page(session,model);}
         session.invalidate(); SecurityContextHolder.clearContext();
         flash.addFlashAttribute("successMessage","コードを変更し、すべてのログインを解除しました。新しいコードでログインしてください。");

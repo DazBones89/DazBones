@@ -50,13 +50,9 @@ public class SecurityConfig {
                 .addFilterAfter(new SessionValidityFilter(credentials), org.springframework.security.web.context.SecurityContextHolderFilter.class)
                 .authorizeHttpRequests(auth -> auth
                         .dispatcherTypeMatchers(DispatcherType.ERROR, DispatcherType.FORWARD).permitAll()
-                        .requestMatchers("/survey/manual", "/survey/manual/delete", "/admin/survey-members/*/delete",
-                                "/admin/survey-members/*/restore", "/admin/survey-members/*/code", "/players/*/restore", "/gear/delete").hasRole("ADMIN")
-                        .requestMatchers("/survey/**", "/api/survey/**", "/news/members").hasAnyRole("ADMIN", "EDITOR", "MEMBER")
-                        .requestMatchers("/admin/schedules/**", "/admin/survey-members/**",
-                                "/players/add", "/players/*/edit", "/players/*/delete",
-                                "/fee/**", "/gear/**").hasAnyRole("ADMIN", "EDITOR")
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/survey/**", "/survey/manual/**", "/survey/answer", "/admin/survey-members/**", "/admin/attendance/bind", "/fee/update").denyAll()
+                        .requestMatchers("/admin/holidays/**", "/admin/code", "/admin/audit", "/admin/player-settings/**", "/players/*/visibility", "/players/*/delete", "/players/*/restore").hasRole("MASTER")
+                        .requestMatchers("/input/**", "/api/input/**", "/survey/**", "/news/members", "/admin/**", "/players/add", "/players/*/edit", "/fee/**", "/gear/**").hasAnyRole("MASTER", "PLAYER")
                         .anyRequest().permitAll())
                 .exceptionHandling(errors -> errors
                         .authenticationEntryPoint((request, response, exception) -> {

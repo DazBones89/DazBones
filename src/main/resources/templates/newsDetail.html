@@ -4,7 +4,7 @@
       th:replace="~{layout :: layout(~{::title}, ~{::section})}">
 
 <head>
-    <title th:text="${news.title} + ' | DazBones'">お知らせ詳細 | DazBones</title>
+    <title th:text="${news.displayTitle} + ' | DazBones'">お知らせ詳細 | DazBones</title>
 </head>
 
 <body>
@@ -22,7 +22,7 @@
         </p>
 
         <h1 class="mt-2 text-2xl font-black leading-8 db-brown"
-            th:text="${news.title}">
+            th:text="${news.displayTitle}">
             お知らせタイトル
         </h1>
 

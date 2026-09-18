@@ -139,6 +139,6 @@ public class AdminNewsController {
 
     private boolean isAdmin(HttpSession session) {
         UserSession user = (UserSession) session.getAttribute("userSession");
-        return user != null && user.isAdmin();
+        return user != null && user.canManage();
     }
 }

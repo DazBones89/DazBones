@@ -30,12 +30,12 @@ public class PageController {
     @GetMapping({"/", "/main"})
     public String home(Model model, HttpSession session) {
         model.addAttribute("userSession", session.getAttribute("userSession"));
-        model.addAttribute("newsList", newsService.getTop3());
+        model.addAttribute("newsList", newsService.visible(session.getAttribute("userSession") != null).stream().limit(3).toList());
         model.addAttribute("memberNewsList", session.getAttribute("userSession") != null ? newsService.memberTop3() : java.util.List.of());
         model.addAttribute("todaySchedules", scheduleService.getToday());
 
         model.addAttribute("unpaidCount", feeService.unpaidCount());
-        model.addAttribute("todayNoAnswerCount", surveyService.countTodayNoAnswer());
+
 
         return "main";
     }
