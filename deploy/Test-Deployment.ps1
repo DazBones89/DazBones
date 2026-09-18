@@ -45,7 +45,7 @@ try {
     $null=Invoke-WebRequest 'http://localhost:19080/login' -Method Post -WebSession $loginSession -Body @{code=$config.ADMIN_CODE;_csrf=$token}
     $page=Invoke-RestMethod 'http://localhost:19080/api/input?year=2026&month=2026-09' -WebSession $loginSession
     if($page.players.name -notcontains 'deployment-check'){throw 'Fresh database login/roster check failed'}
-    $inputPage=Invoke-WebRequest 'http://localhost:19080/input' -WebSession $loginSession
+    $inputPage=Invoke-WebRequest 'http://localhost:19080/survey/attendance' -WebSession $loginSession
     $inputToken=[regex]::Match($inputPage.Content,'data-csrf="([^"]+)"').Groups[1].Value
     if(!$inputToken){throw 'Input page CSRF token missing'}
     $headers=@{'X-CSRF-TOKEN'=$inputToken}

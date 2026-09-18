@@ -1,7 +1,7 @@
 (()=>{'use strict';
 const app=document.getElementById('inputApp');if(!app)return;
 const q=s=>app.querySelector(s),content=q('#inputContent'),notice=q('#loadStatus'),yearInput=q('#inputYear'),playerSelect=q('#inputPlayer');
-const params=new URLSearchParams(location.search),today=new Date();let year=Number(params.get('year'))||today.getFullYear(),month=params.get('month')||`${year}-${String(today.getMonth()+1).padStart(2,'0')}`,tab=params.get('tab')||'stats',selected=Number(params.get('playerId'))||null,data,day=null;
+const params=new URLSearchParams(location.search),today=new Date();let year=Number(params.get('year'))||today.getFullYear(),month=params.get('month')||`${year}-${String(today.getMonth()+1).padStart(2,'0')}`,tab=app.dataset.page||'attendance',selected=Number(params.get('playerId'))||null,data,day=null;
 let controllers=[];
 const el=(tag,text,cls)=>{const x=document.createElement(tag);if(text!==undefined)x.textContent=text;if(cls)x.className=cls;return x;};
 const card=title=>{const c=el('div',undefined,'input-card');if(title)c.append(el('h2',title));return c;};
@@ -32,13 +32,24 @@ const dateLabel=d=>new Date(d+'T12:00:00').toLocaleDateString('ja-JP',{month:'2-
 function attendance(){
  async function changeMonth(value){if(!await flush())return;month=value;year=Number(value.slice(0,4));day=null;await load();}
  function adjacentMonth(offset){const [y,m]=month.split('-').map(Number),d=new Date(y,m-1+offset,1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;}
- const months=el('div',undefined,'month-grid');for(let n=1;n<=12;n++){const m=`${year}-${String(n).padStart(2,'0')}`;const b=button(`${n}月`,()=>changeMonth(m));b.setAttribute('aria-pressed',String(month===m));months.append(b);}content.append(months);
+ const monthPicker=el('div',undefined,'month-picker');
+ const monthSelect=select(monthPicker,'月',Array.from({length:12},(_,i)=>[`${year}-${String(i+1).padStart(2,'0')}`,`${i+1}月`]),month);
+ monthSelect.addEventListener('change',async()=>{const target=monthSelect.value;await changeMonth(target);monthSelect.value=month;});content.append(monthPicker);
  const editor=card();editor.classList.add('attendance-editor');content.append(editor);
  const summary=card(`${Number(month.slice(0,4))}年${Number(month.slice(5))}月の出欠確認`);const rows=new Map();function refresh(){for(const [date,row] of rows){row.replaceChildren(el('span',dateLabel(date)));const counts=el('span',undefined,'day-counts'),answers=data.answers.filter(a=>a.date===date);for(const s of ['○','△','×'])counts.append(el('span',`${s} ${answers.filter(a=>a.status===s).length}`));row.append(counts);}if(detail.isConnected)renderDetail();}
  for(const date of data.dates){const row=button('',async()=>{if(!await flush())return;day=date;renderDetail();detail.scrollIntoView({behavior:'smooth',block:'start'});},'day-row');rows.set(date,row);summary.append(row);}content.append(summary);
  const edit=el('details',undefined,'input-card');edit.append(el('summary','対象日を追加'));const extra=field(edit,'追加する日付','date','');extra.min=`${year}-01-01`;extra.max=`${year}-12-31`;const msg=el('p');edit.append(button('日付を追加',async()=>{if(!extra.value)return;if(!await flush())return;try{await post('/api/input/date',{date:extra.value});month=extra.value.slice(0,7);day=null;await load();}catch(e){msg.textContent=e.message;}},'primary'),msg);content.append(edit);
  const detail=card();detail.classList.add('attendance-detail');content.append(detail);if(!day||!data.dates.includes(day))day=data.dates[0]??null;
  const detailControllers=[];
+ function renderRespondents(){
+  detail.querySelectorAll('.attendance-person,.no-answers').forEach(row=>row.remove());
+  let count=0;
+  for(const p of data.players){const a=data.answers.find(a=>a.date===day&&a.playerId===p.id&&['○','△','×'].includes(a.status));if(!a)continue;
+   const row=el('div',undefined,'attendance-person'),head=el('div',undefined,'person-head');head.append(el('span',p.name),el('span',a.status));row.append(head);if(a.memo)row.append(el('p',a.memo,'person-memo'));detail.append(row);count++;
+  }
+  if(!count)detail.append(el('p','まだ回答がありません。','no-answers muted'));
+ }
+
  function renderDetail(){for(const c of detailControllers){const i=controllers.indexOf(c);if(i>=0)controllers.splice(i,1);}detailControllers.length=0;detail.replaceChildren();editor.replaceChildren();
  const monthNav=el('div',undefined,'day-nav month-nav');
  const previousMonth=button('←',()=>changeMonth(adjacentMonth(-1))),nextMonth=button('→',()=>changeMonth(adjacentMonth(1)));
@@ -49,12 +60,12 @@ function attendance(){
  const answerDay=select(editor,'回答する日付',data.dates.map(d=>[d,dateLabel(d)]),day);
  answerDay.addEventListener('change',async()=>{const value=answerDay.value;if(!await flush()){answerDay.value=day;return;}day=value;renderDetail();});
  const nav=el('div',undefined,'day-nav'),index=data.dates.indexOf(day);const prev=button('←',async()=>{if(await flush()){day=data.dates[index-1];renderDetail();}}),next=button('→',async()=>{if(await flush()){day=data.dates[index+1];renderDetail();}});prev.disabled=index===0;next.disabled=index===data.dates.length-1;nav.append(prev,el('h2',dateLabel(day)),next);detail.append(nav);
- for(const p of data.players){const a=data.answers.find(a=>a.date===day&&a.playerId===p.id);const row=el('div',undefined,'attendance-person'),head=el('div',undefined,'person-head');head.append(el('span',p.name),el('span',a?.status||'未回答'));row.append(head);if(a?.memo)row.append(el('p',a.memo,'person-memo'));detail.append(row);}
+ renderRespondents();
  const p=data.players.find(p=>p.id===selected);if(!p)return;const targetDay=day;let a=data.answers.find(a=>a.date===targetDay&&a.playerId===p.id);if(!a){a={playerId:p.id,date:targetDay,status:'',memo:'',version:-1};data.answers.push(a);}const form=el('div',undefined,'attendance-form');form.append(el('h2',`${p.name} の回答`));const choices=el('div',undefined,'answer-choices');const radios=[];for(const s of ['○','△','×']){const l=el('label'),radio=el('input');radio.type='radio';radio.name='answer';radio.value=s;radio.checked=a.status===s;radio.className='answer-radio';const label=el('span',s,'answer-option');l.append(radio,label);choices.append(l);radios.push(radio);}form.append(choices);const memo=field(form,'コメント','textarea',a.memo);memo.maxLength=500;
- const ctl=autosave(form,[...radios,memo],'/api/input/attendance',()=>{const status=radios.find(r=>r.checked)?.value;if(!status)throw Error('○・△・×を選択してください。');return {playerId:p.id,date:targetDay,status,memo:memo.value,version:a.version};},(r,v)=>{Object.assign(a,v,{version:r.version});for(const [date,row] of rows){const answers=data.answers.filter(a=>a.date===date);row.querySelectorAll('.day-counts span').forEach((span,i)=>{const s=['○','△','×'][i];span.textContent=`${s} ${answers.filter(a=>a.status===s).length}`;});}const allRows=detail.querySelectorAll(':scope > .attendance-person');const ri=data.players.findIndex(x=>x.id===p.id),row=allRows[ri];row.querySelector('.person-head').lastChild.textContent=v.status;row.querySelector('.person-memo')?.remove();if(v.memo)row.append(el('p',v.memo,'person-memo'));});detailControllers.push(ctl);editor.append(form);
+ const ctl=autosave(form,[...radios,memo],'/api/input/attendance',()=>{const status=radios.find(r=>r.checked)?.value;if(!status)throw Error('○・△・×を選択してください。');return {playerId:p.id,date:targetDay,status,memo:memo.value,version:a.version};},(r,v)=>{Object.assign(a,v,{version:r.version});for(const [date,row] of rows){const answers=data.answers.filter(a=>a.date===date);row.querySelectorAll('.day-counts span').forEach((span,i)=>{const s=['○','△','×'][i];span.textContent=`${s} ${answers.filter(a=>a.status===s).length}`;});}renderRespondents();});detailControllers.push(ctl);editor.append(form);
  }
  refresh();}
-app.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',async()=>{if(!await flush())return;tab=b.dataset.tab;render();}));
+
 playerSelect.addEventListener('change',async()=>{const next=Number(playerSelect.value);if(!await flush()){playerSelect.value=selected;return;}selected=next;render();});
 yearInput.addEventListener('change',async()=>{const next=Number(yearInput.value);if(!Number.isInteger(next)||next<1900||next>2100||!await flush()){yearInput.value=year;return;}year=next;month=`${year}-${month.slice(5)}`;day=null;await load();});
 if(!['stats','fee','gear','attendance'].includes(tab))tab='stats';load();

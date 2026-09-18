@@ -493,14 +493,18 @@ class SiteIntegrationTest {
 
     @Test void sharedRolesAndRetiredLogins() throws Exception {
         var session=login("editor");
-        for(String path:new String[]{"/admin/news","/admin/schedules","/admin/upload/group-photo","/input"})
+        for(String path:new String[]{"/admin/news","/admin/schedules","/admin/upload/group-photo","/players/stats","/fee","/gear"})
             mvc.perform(get(path).session(session)).andExpect(status().isOk());
         for(String path:new String[]{"/admin/holidays","/admin/code","/admin/audit","/admin/player-settings","/admin/survey-members"})
             mvc.perform(get(path).session(session)).andExpect(status().isForbidden());
         var m=member("旧本人");String old=credentialService.issueMemberCode(m.getId());
         assertThat(credentialService.authenticate("member-"+m.getId(),old)).isNull();
         mvc.perform(get("/survey").session(session)).andExpect(redirectedUrl("/survey/attendance"));
-        mvc.perform(get("/survey/attendance").session(session)).andExpect(redirectedUrl("/input?tab=attendance"));
+        mvc.perform(get("/survey/attendance").session(session)).andExpect(status().isOk())
+            .andExpect(content().string(containsString("data-page=\"attendance\"")))
+            .andExpect(content().string(not(containsString("一括入力"))));
+        mvc.perform(get("/input").session(session).param("tab","fee").param("year","2025")).andExpect(redirectedUrl("/fee?year=2025"));
+        mvc.perform(get("/players/stats")).andExpect(redirectedUrl("/login"));
     }
     @Test void codeChangeRevokesBothRolesAndPersists() throws Exception {
         var master=login("admin");var player=login("editor");var other=login("admin");

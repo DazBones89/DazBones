@@ -12,7 +12,19 @@ public class InputController {
  private final InputService input;private final AttendanceService attendance;private final PlayerVisibility visibility;
  public InputController(InputService i,AttendanceService a,PlayerVisibility v){input=i;attendance=a;visibility=v;}
  private UserSession user(HttpSession s){return (UserSession)s.getAttribute("userSession");}
- @GetMapping("/input") public String page(HttpSession s,Model m){m.addAttribute("userSession",user(s));return "input";}
+ @GetMapping({"/players/stats", "/fee", "/gear", "/survey/attendance"})
+ public String page(jakarta.servlet.http.HttpServletRequest request,HttpSession s,Model m){
+  String page=switch(request.getRequestURI()){case "/fee" -> "fee";case "/gear" -> "gear";case "/survey/attendance" -> "attendance";default -> "stats";};
+  String title=switch(page){case "fee" -> "部費";case "gear" -> "道具管理";case "attendance" -> "出欠確認";default -> "打撃成績";};
+  m.addAttribute("userSession",user(s));m.addAttribute("inputPage",page);m.addAttribute("pageTitle",title);return "input";
+ }
+ @GetMapping("/input") public String legacy(@RequestParam(defaultValue="attendance") String tab,@RequestParam(required=false) String year,@RequestParam(required=false) String month,@RequestParam(required=false) String playerId){
+  String target=switch(tab){case "stats" -> "/players/stats";case "fee" -> "/fee";case "gear" -> "/gear";default -> "/survey/attendance";};
+  var url=org.springframework.web.util.UriComponentsBuilder.fromPath(target);
+  if(year!=null)url.queryParam("year",year);if(month!=null)url.queryParam("month",month);if(playerId!=null)url.queryParam("playerId",playerId);
+  return "redirect:"+url.build().encode().toUriString();
+ }
+ @GetMapping("/fee/player/{id}") public String feeHistory(@PathVariable Long id){return "redirect:/fee?playerId="+id;}
  @GetMapping("/api/input") @ResponseBody public Map<String,Object> data(@RequestParam int year,@RequestParam String month,HttpSession s){return input.data(user(s),year,month);}
  @PostMapping("/api/input/stats") @ResponseBody public Map<String,Object> stats(@RequestParam Long playerId,@RequestParam(required=false) Integer atBats,@RequestParam(required=false) Integer hits,@RequestParam Long version,HttpSession s){return input.stats(user(s),playerId,atBats,hits,version);}
  @PostMapping("/api/input/fee") @ResponseBody public Map<String,Object> fee(@RequestParam Long playerId,@RequestParam int year,@RequestParam boolean paid,@RequestParam(defaultValue="") String comment,@RequestParam Long version,HttpSession s){return input.fee(user(s),playerId,year,paid,comment,version);}

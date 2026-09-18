@@ -1,5 +1,5 @@
 <!DOCTYPE html><html lang="ja" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: layout(~{::title}, ~{::section})}"><head><title>選手紹介 | DazBones</title></head><body><section class="px-4 py-6"><link rel="stylesheet" href="/css/input.css"><h1>選手紹介</h1>
-<p th:if="${userSession != null and userSession.canManage()}"><a href="/players/add">選手追加</a> ／ <a href="/input">一括入力</a></p>
+<p th:if="${userSession != null and userSession.canManage()}"><a href="/players/add">選手追加</a> ／ <a href="/players/stats">打撃成績の入力</a></p>
 <p th:if="${userSession != null and userSession.isMaster()}"><a href="/admin/player-settings">項目の表示設定</a></p>
 <div class="input-tabs"><a th:if="${visible.backNumber}" href="/players?sort=backNumber">背番号順</a><a th:if="${visible.positions}" href="/players?sort=position">守備位置順</a><a th:if="${visible.average and visible.atBats and visible.hits}" href="/players?sort=average">打率順</a></div>
 <article class="input-card" th:each="p:${players}">

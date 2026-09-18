@@ -16,7 +16,7 @@ async function screen(tab, options = {}) {
   window.HTMLElement.prototype.scrollIntoView = () => {};
   window.confirm = () => true;
   const app = window.document.getElementById('inputApp');
-  app.dataset.csrf = 'test-token'; app.dataset.csrfHeader = 'X-CSRF-TOKEN';
+  app.dataset.page = tab; app.dataset.csrf = 'test-token'; app.dataset.csrfHeader = 'X-CSRF-TOKEN';
   const state = {
     players: [{ id: 1, name: '選手A', atBats: 10, hits: 2, version: 0 }, { id: 2, name: '選手B', atBats: 5, hits: 1, version: 0 }],
     fields: { atBats: true, hits: true, average: true }, fees: [], gears: [],
@@ -79,9 +79,14 @@ test('fee check moves the name between paid and unpaid without navigation', asyn
 test('attendance saves cross and updates counts, names and comments', async () => {
   const s = await screen('attendance');
   try {
+    assert.equal(s.qa('.attendance-person').length, 0);
+    assert.match(s.q('.attendance-detail').textContent, /まだ回答がありません/);
     s.change(s.q('input[value="×"]'), true);
     await until(() => s.q('.save-state').textContent === '保存済み');
     assert.match(s.q('.day-row').textContent, /× 1/);
+    assert.equal(s.qa('.attendance-person').length, 1);
+    assert.match(s.q('.attendance-detail').textContent, /選手A/);
+    assert.doesNotMatch(s.q('.attendance-detail').textContent, /選手B/);
     s.change(s.q('#inputContent textarea'), '午前は不参加');
     await until(() => s.calls.length === 2 && s.q('.save-state').textContent === '保存済み');
     assert.equal(s.q('.person-memo').textContent, '午前は不参加');
@@ -91,7 +96,7 @@ test('attendance saves cross and updates counts, names and comments', async () =
   } finally { s.dom.window.close(); }
 });
 
-test('failure preserves input and retry saves it; switching tabs waits for saving', async () => {
+test('failure preserves input and retry saves it; switching players waits for saving', async () => {
   let fail = true;
   const s = await screen('fee', { post: async () => {
     if (fail) throw Error('offline');
@@ -100,12 +105,12 @@ test('failure preserves input and retry saves it; switching tabs waits for savin
   try {
     s.change(s.q('#inputContent textarea'), '入力を保持');
     await until(() => !s.q('.retry').hidden);
-    s.q('[data-tab=stats]').click(); await tick();
+    s.change(s.q('#inputPlayer'),'2'); await tick();
     assert.equal(s.q('#inputContent textarea').value, '入力を保持');
     fail = false; s.q('.retry').click();
     await until(() => s.q('.save-state').textContent === '保存済み');
-    s.q('[data-tab=stats]').click();
-    await until(() => s.q('#inputContent h2').textContent === '打撃成績');
+    s.change(s.q('#inputPlayer'),'2');
+    await until(() => s.q('#inputContent').textContent.includes('2026年度・選手B'));
   } finally { s.dom.window.close(); }
 });
 
@@ -126,7 +131,7 @@ test('attendance input sits before summary and supports month arrows across year
   const s = await screen('attendance');
   try {
     const editor = s.q('.attendance-editor');
-    assert.equal(editor.previousElementSibling.className, 'month-grid');
+    assert.equal(editor.previousElementSibling.className, 'month-picker');
     assert.match(editor.nextElementSibling.textContent, /出欠確認/);
     const choice = s.q('.answer-option');
     choice.click();
@@ -137,7 +142,7 @@ test('attendance input sits before summary and supports month arrows across year
     await until(() => s.q('.month-nav h2').textContent.includes('10月'));
     s.q('[aria-label="前の月"]').click();
     await until(() => s.q('.month-nav h2').textContent.includes('9月'));
-    s.qa('.month-grid button')[11].click();
+    s.change(s.q('.month-picker select'), '2026-12');
     await until(() => s.q('.month-nav h2').textContent.includes('12月'));
     s.q('[aria-label="次の月"]').click();
     await until(() => s.q('.month-nav h2').textContent.includes('2027年1月'));
