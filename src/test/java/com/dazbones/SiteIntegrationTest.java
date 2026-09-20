@@ -594,4 +594,24 @@ class SiteIntegrationTest {
         mvc.perform(post("/api/input/attendance/bulk").session(session).contentType("application/json").content(body)).andExpect(status().isForbidden());
         mvc.perform(post("/api/input/attendance/bulk").with(csrf()).contentType("application/json").content(body)).andExpect(status().isUnauthorized());
     }
+
+    @Test void socialLinksArePublicButOnlyMembersCanChangeThem() throws Exception {
+        mvc.perform(get("/sns")).andExpect(status().isOk()).andExpect(content().string(containsString("@dazbones89")));
+        mvc.perform(post("/admin/social/add").with(csrf()).param("url","https://www.youtube.com/@dazbones" )).andExpect(status().isUnauthorized());
+        var session=login("editor");
+        mvc.perform(post("/admin/social/add").session(session).with(csrf()).param("url","https://www.youtube.com/@dazbones")).andExpect(status().is3xxRedirection());
+        mvc.perform(get("/sns")).andExpect(status().isOk()).andExpect(content().string(containsString("YouTube")));
+        mvc.perform(post("/admin/social/add").session(session).with(csrf()).param("url","javascript:alert(1)")).andExpect(flash().attributeExists("error"));
+        mvc.perform(post("/admin/social/add").session(session).param("url","https://example.com/")).andExpect(status().isForbidden());
+        mvc.perform(post("/admin/social/delete").session(session).with(csrf()).param("id","sns.default")).andExpect(status().is3xxRedirection());
+        mvc.perform(get("/sns")).andExpect(content().string(not(containsString("@dazbones89</span>"))));
+    }
+    @Test void feeAmountIsSavedByYearAndRejectsInvalidAmounts() throws Exception {
+        var p=player("金額確認",1,1,"投手");var session=login("editor");
+        mvc.perform(post("/api/input/fee").session(session).with(csrf()).param("playerId",p.getId().toString()).param("year","2026").param("paid","true").param("amount","5000").param("version","-1")).andExpect(status().isOk());
+        var saved=annualFees.findByPlayerIdAndFiscalYear(p.getId(),2026).orElseThrow();assertThat(saved.getAmount()).isEqualTo(5000);
+        mvc.perform(post("/api/input/fee").session(session).with(csrf()).param("playerId",p.getId().toString()).param("year","2026").param("paid","true").param("amount","-1").param("version",saved.getVersion().toString())).andExpect(status().isBadRequest());
+        assertThat(annualFees.findByPlayerIdAndFiscalYear(p.getId(),2026).orElseThrow().getAmount()).isEqualTo(5000);
+        assertThat(annualFees.findByPlayerIdAndFiscalYear(p.getId(),2025)).isEmpty();
+    }
 }

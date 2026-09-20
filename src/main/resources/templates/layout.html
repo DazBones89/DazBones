@@ -36,7 +36,7 @@
         <!-- ハンバーガーメニュー -->
         <nav id="mobileMenu" class="hidden border-t border-gray-100 bg-white px-5 py-4">
 
-<div class="grid grid-cols-2 gap-3 text-sm font-bold"><a href="/" class="rounded-xl border px-4 py-3">ホーム</a><a href="/players" class="rounded-xl border px-4 py-3">選手紹介</a><a href="/schedule" class="rounded-xl border px-4 py-3">活動予定</a><a href="/history" class="rounded-xl border px-4 py-3">活動履歴</a><a href="/photo" class="rounded-xl border px-4 py-3">写真</a><a href="/news" class="rounded-xl border px-4 py-3">お知らせ</a><a href="/policy" class="rounded-xl border px-4 py-3">規約・ポリシー</a></div><div th:if="${userSession != null and userSession.canManage()}" class="mt-5 grid grid-cols-2 gap-3 text-sm font-bold"><a href="/survey/attendance" class="rounded-xl border px-4 py-3">出欠確認</a><a href="/fee" class="rounded-xl border px-4 py-3">部費</a><a href="/gear" class="rounded-xl border px-4 py-3">道具管理</a><a href="/players/add" class="rounded-xl border px-4 py-3">選手追加</a><a href="/admin/schedules" class="rounded-xl border px-4 py-3">活動予定管理</a><a href="/admin/news" class="rounded-xl border px-4 py-3">お知らせ管理</a><a href="/admin/upload/group-photo" class="rounded-xl border px-4 py-3">集合写真変更</a></div><div th:if="${userSession != null and userSession.isMaster()}" class="mt-5"><p>master専用</p><div class="grid grid-cols-2 gap-3"><a href="/admin/player-settings" class="rounded-xl border px-4 py-3">選手項目の表示設定</a><a href="/admin/holidays" class="rounded-xl border px-4 py-3">祝日管理</a><a href="/admin/code" class="rounded-xl border px-4 py-3">ログインコード変更</a><a href="/admin/audit" class="rounded-xl border px-4 py-3">操作履歴</a></div></div><a th:if="${userSession == null}" href="/login" class="block py-3">ログイン</a><form th:if="${userSession != null}" th:action="@{/logout}" method="post"><button class="py-3">ログアウト</button></form>        </nav>
+<div class="grid grid-cols-2 gap-3 text-sm font-bold"><a href="/" class="rounded-xl border px-4 py-3">ホーム</a><a href="/players" class="rounded-xl border px-4 py-3">選手紹介</a><a href="/schedule" class="rounded-xl border px-4 py-3">活動予定</a><a href="/history" class="rounded-xl border px-4 py-3">活動履歴</a><a href="/photo" class="rounded-xl border px-4 py-3">写真</a><a href="/news" class="rounded-xl border px-4 py-3">お知らせ</a><a href="/sns" class="rounded-xl border px-4 py-3">SNS</a><a href="/policy" class="rounded-xl border px-4 py-3">規約・ポリシー</a></div><div th:if="${userSession != null and userSession.canManage()}" class="mt-5 grid grid-cols-2 gap-3 text-sm font-bold"><a href="/survey/attendance" class="rounded-xl border px-4 py-3">出欠確認</a><a href="/fee" class="rounded-xl border px-4 py-3">部費</a><a href="/gear" class="rounded-xl border px-4 py-3">道具管理</a><a href="/players/add" class="rounded-xl border px-4 py-3">選手追加</a><a href="/admin/schedules" class="rounded-xl border px-4 py-3">活動予定管理</a><a href="/admin/news" class="rounded-xl border px-4 py-3">お知らせ管理</a><a href="/admin/upload/group-photo" class="rounded-xl border px-4 py-3">集合写真変更</a></div><div th:if="${userSession != null and userSession.isMaster()}" class="mt-5"><p>master専用</p><div class="grid grid-cols-2 gap-3"><a href="/admin/player-settings" class="rounded-xl border px-4 py-3">選手項目の表示設定</a><a href="/admin/holidays" class="rounded-xl border px-4 py-3">祝日管理</a><a href="/admin/code" class="rounded-xl border px-4 py-3">ログインコード変更</a><a href="/admin/audit" class="rounded-xl border px-4 py-3">操作履歴</a></div></div><a th:if="${userSession == null}" href="/login" class="block rounded-xl border px-4 py-3 mt-3 font-bold">ログイン</a><form th:if="${userSession != null}" th:action="@{/logout}" method="post"><button class="py-3">ログアウト</button></form>        </nav>
     </header>
 
     <!-- ページ本文 -->
@@ -53,21 +53,9 @@
                 <span>ホーム</span>
             </a>
 
-            <a th:href="@{/schedule}" class="flex flex-col items-center gap-1 py-3 text-gray-500">
-                <span class="text-2xl">▣</span>
-                <span>活動予定</span>
-            </a>
-
-            <a th:href="@{/photo}" class="flex flex-col items-center gap-1 py-3 text-gray-500">
-                <span class="text-2xl">▤</span>
-                <span>写真</span>
-            </a>
-
-            <a th:href="${userSession != null ? '/survey/attendance' : '/login'}" class="flex flex-col items-center gap-1 py-3 text-gray-500">
-                <span class="text-2xl">○</span>
-                <span th:text="${userSession != null ? '出欠確認' : 'ログイン'}">ログイン</span>
-            </a>
-
+            <a href="/players" class="flex flex-col items-center gap-1 py-3 text-gray-500"><span class="text-2xl">⚾</span><span>選手紹介</span></a>
+            <a href="/photo" class="flex flex-col items-center gap-1 py-3 text-gray-500"><span class="text-2xl">▤</span><span>写真</span></a>
+            <a href="/schedule" class="flex flex-col items-center gap-1 py-3 text-gray-500"><span class="text-2xl">▣</span><span>活動予定</span></a>
         </div>
     </nav>
 

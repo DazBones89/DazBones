@@ -63,15 +63,19 @@ test('stats autosave serializes rapid changes using the returned version', async
 test('fee check moves the name between paid and unpaid without navigation', async () => {
   const s = await screen('fee');
   try {
-    assert.equal(s.qa('.name-list')[1].textContent, '選手A選手B');
+    assert.equal(s.qa('.name-list')[0].textContent, '選手A選手B');
     s.change(s.q('#inputContent input[type=checkbox]'), true);
     await until(() => s.q('.attendance-form .save-state, #inputContent > .input-card .save-state').textContent === '保存済み');
-    assert.equal(s.qa('.name-list')[0].textContent, '選手A');
-    assert.equal(s.qa('.name-list')[1].textContent, '選手B');
+    assert.equal(s.qa('.name-list')[1].textContent, '選手A　0円');
+    assert.equal(s.qa('.name-list')[0].textContent, '選手B');
     s.change(s.q('#inputContent textarea'), '5000円');
     await until(() => s.calls.length === 2 && s.q('.attendance-form .save-state, #inputContent > .input-card .save-state').textContent === '保存済み');
     assert.equal(s.calls[1].values.version, '0');
     assert.equal(s.calls[1].values.comment, '5000円');
+    s.change(s.q('#inputContent input[type=number]'), '5000');
+    await until(() => s.calls.length === 3 && s.qa('.name-list')[1].textContent.includes('5,000円'));
+    assert.equal(s.calls[2].values.amount, '5000');
+    assert.equal(s.qa('.name-list')[0].textContent, '選手B');
     assert.equal(s.window.location.pathname, '/input');
   } finally { s.dom.window.close(); }
 });
@@ -122,6 +126,8 @@ test('new gear is created once and later edits use its id and version', async ()
     s.change(s.q('#inputContent textarea'), '木製');
     await until(() => s.calls.length === 2 && s.q('.attendance-form .save-state, #inputContent > .input-card .save-state').textContent === '保存済み');
     assert.equal(s.calls[1].values.id, '7');
+    assert.equal(s.q('.gear-shortcuts a').getAttribute('href'), '#gear-7');
+    assert.ok(s.q('#gear-7'));
     assert.equal(s.calls[1].values.version, '0');
   } finally { s.dom.window.close(); }
 });

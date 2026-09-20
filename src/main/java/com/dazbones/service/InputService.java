@@ -24,7 +24,7 @@ public class InputService {
   List<Map<String,Object>> ps=new ArrayList<>();
   for(var p:roster){var r=new LinkedHashMap<String,Object>();r.put("id",p.getId());r.put("name",fields.get("name")?p.getName():"選手 #"+p.getId());r.put("version",p.getVersion());
    if(fields.get("atBats"))r.put("atBats",p.getAtBats());if(fields.get("hits"))r.put("hits",p.getHits());if(fields.get("average")&&fields.get("atBats")&&fields.get("hits"))r.put("average",p.getDisplayAverage());ps.add(r);}
-  var fs=new ArrayList<Map<String,Object>>(); for(var f:fees.findByFiscalYearOrderByPlayerIdAsc(year))fs.add(Map.of("playerId",f.getPlayerId(),"paid",f.isPaid(),"comment",Objects.toString(f.getComment(),""),"version",f.getVersion()));
+  var fs=new ArrayList<Map<String,Object>>(); for(var f:fees.findByFiscalYearOrderByPlayerIdAsc(year))fs.add(Map.of("playerId",f.getPlayerId(),"paid",f.isPaid(),"amount",f.getAmount(),"comment",Objects.toString(f.getComment(),""),"version",f.getVersion()));
   var gs=new ArrayList<Map<String,Object>>();for(var g:gears.findAll()){var r=new LinkedHashMap<String,Object>();r.put("id",g.getId());r.put("name",g.getName());r.put("ownerId",g.getOwnerId());r.put("comment",Objects.toString(g.getComment(),""));r.put("version",g.getVersion());gs.add(r);}
   var as=new ArrayList<Map<String,Object>>();var ids=roster.stream().map(Player::getId).toList();
   for(var a:attendance.answers(m))if(ids.contains(a.getPlayerId()))as.add(Map.of("playerId",a.getPlayerId(),"date",a.getTargetDate().toString(),"status",a.getStatus(),"memo",Objects.toString(a.getMemo(),""),"version",a.getVersion()));
@@ -39,10 +39,12 @@ public class InputService {
   if(bats<0||hitCount<0||hitCount>bats)throw new IllegalArgumentException("打数・安打は0以上、安打は打数以下で入力してください");
   players.saveAndFlush(p);return Map.of("version",p.getVersion());
  }
- @Transactional public Map<String,Object> fee(UserSession u,Long id,int year,boolean paid,String comment,Long expected){
+ @Transactional public Map<String,Object> fee(UserSession u,Long id,int year,boolean paid,String comment,Long expected){return fee(u,id,year,paid,comment,expected,null);}
+ @Transactional public Map<String,Object> fee(UserSession u,Long id,int year,boolean paid,String comment,Long expected,Integer amount){
+  if(amount!=null&&(amount<0||amount>100000000))throw new IllegalArgumentException("金額は0〜100000000円の整数で入力してください");
   allowed(u);year(year);states.lockState();active(id);if(comment==null||comment.length()>1000)throw new IllegalArgumentException("コメントは1000文字以内です");
   var f=fees.findByPlayerIdAndFiscalYear(id,year).orElse(null);version(f==null?null:f.getVersion(),expected);
-  if(f==null){f=new AnnualFee();f.setPlayerId(id);f.setFiscalYear(year);}f.setPaid(paid);f.setComment(comment);fees.saveAndFlush(f);return Map.of("version",f.getVersion());
+  if(f==null){f=new AnnualFee();f.setPlayerId(id);f.setFiscalYear(year);}f.setPaid(paid);if(amount!=null)f.setAmount(amount);f.setComment(comment);fees.saveAndFlush(f);return Map.of("version",f.getVersion());
  }
  @Transactional public Map<String,Object> gear(UserSession u,Long id,String name,Long owner,String comment,Long expected,boolean delete){
   allowed(u);states.lockState();var g=id==null?null:gears.findById(id).orElseThrow(()->new IllegalArgumentException("道具がありません"));version(g==null?null:g.getVersion(),expected);

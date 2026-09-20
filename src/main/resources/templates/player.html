@@ -2,9 +2,9 @@
 <p th:if="${userSession != null and userSession.canManage()}"><a href="/players/add">選手追加</a> ／ <a href="/players/stats">打撃成績の入力</a></p>
 <p th:if="${userSession != null and userSession.isMaster()}"><a href="/admin/player-settings">項目の表示設定</a></p>
 <div class="input-tabs"><a th:if="${visible.backNumber}" href="/players?sort=backNumber">背番号順</a><a th:if="${visible.positions}" href="/players?sort=position">守備位置順</a><a th:if="${visible.average and visible.atBats and visible.hits}" href="/players?sort=average">打率順</a></div>
-<article class="input-card" th:each="p:${players}">
+<article class="input-card player-card" th:each="p:${players}">
 <img th:if="${visible.image}" th:src="${p.imagePath != null ? p.imagePath : '/images/no-image.png'}" alt="選手写真" class="player-photo">
-<h2 th:text="${visible.name ? p.name : '選手 #' + p.id}"></h2>
+<div class="player-info"><h2 th:text="${visible.name ? p.name : '選手 #' + p.id}"></h2>
 <p th:if="${visible.backNumber}" th:text="${'背番号：' + (p.backNumber == null ? '未登録' : p.backNumber)}"></p>
 <p th:if="${visible.throwHand}" th:text="${p.throwHand != null ? p.throwHand + '投' : ''}"></p><p th:if="${visible.batHand}" th:text="${p.batHand != null ? p.batHand + '打' : ''}"></p>
 <p th:if="${visible.positions}"><span th:each="pos:${p.positions}" th:text="${pos.position + ' '}"></span></p>
@@ -12,4 +12,4 @@
 <p th:if="${visible.average and visible.atBats and visible.hits}" th:text="${'打率：' + p.displayAverage}"></p><p th:if="${visible.comment}" th:text="${p.comment}"></p>
 <a th:if="${userSession != null and userSession.canManage()}" th:href="@{/players/{id}/edit(id=${p.id})}">編集</a>
 <form th:if="${userSession != null and userSession.isMaster()}" th:action="@{/players/{id}/visibility(id=${p.id})}" class="auto-setting" method="post"><label><input type="checkbox" name="visible" th:checked="${p.deleteFlg == 0}"> この選手を表示</label><output aria-live="polite"></output></form>
-</article><script src="/js/settings.js" defer></script></section></body></html>
+</div></article><script src="/js/settings.js" defer></script></section></body></html>
