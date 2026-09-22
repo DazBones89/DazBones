@@ -74,7 +74,7 @@ try {
     $imageText=if($image.Content -is [byte[]]){[Text.Encoding]::UTF8.GetString($image.Content)}else{[string]$image.Content}
     if($imageText -ne 'restore-test'){throw 'Restored upload is missing or corrupted'}
     $versions=Invoke-CheckCompose $restoreProject $restoreEnv @('exec','-T','db','sh','-c','MYSQL_PWD="$MYSQL_PASSWORD" mysql -u"$MYSQL_USER" "$MYSQL_DATABASE" -N -e "SELECT version FROM flyway_schema_history WHERE success=1 ORDER BY installed_rank"')
-    if(($versions -join ',') -ne '0,1,2,3,4'){throw 'Unexpected migration history'}
+    if(($versions -join ',') -ne '0,1,2,3,4,5'){throw 'Unexpected migration history'}
     Write-Output 'PASS: Docker build runtime, blank DB migrations, login, roster, DB backup/restore and image backup/restore.'
 } finally {
     # These two random project names are created only by this isolated test; never touch the user's existing project.

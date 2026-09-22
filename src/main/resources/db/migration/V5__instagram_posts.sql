@@ -1,0 +1,7 @@
+CREATE TABLE instagram_posts (
+ id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+ shortcode VARCHAR(64) NOT NULL UNIQUE,
+ url VARCHAR(255) NOT NULL,
+ posted_at DATETIME NOT NULL,
+ display_order INT NULL
+);

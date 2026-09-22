@@ -24,7 +24,7 @@ masterと選手には異なるコードを指定してください。未設定�
 
 ローカル設定ファイルを置かない環境では `DB_URL`、`DB_USERNAME`、`DB_PASSWORD`、`ADMIN_CODE`、`EDITOR_CODE`、必要に応じて `PORT`、`UPLOAD_DIR` を環境変数で設定できます。`config/local.properties` がある場合、そのファイルの同名設定が優先されます。
 
-DB移行は、バックアップ後に `./gradlew.bat bootRun --args="--spring.flyway.enabled=true"` で実行します。通常のローカル起動では移行は無効です。V0に空DB用の初期スキーマ、V1以降に差分移行を含みます。既存のbaseline 0環境ではV0は実行されません。ローカルDBはV4まで適用済みです。
+DB移行は、バックアップ後に `./gradlew.bat bootRun --args="--spring.flyway.enabled=true"` で実行します。通常のローカル起動では移行は無効です。V0に空DB用の初期スキーマ、V1以降に差分移行を含みます。既存のbaseline 0環境ではV0は実行されません。ローカルDBはV5まで適用済みです。
 
 ## 公開用Docker構成・画面資産
 

@@ -16,11 +16,13 @@ public class PageController {
     private final ScheduleService scheduleService;
     private final com.dazbones.service.AnnualFeeService feeService;
     private final SurveyService surveyService;
+    private final com.dazbones.service.InstagramService instagram;
 
     public PageController(NewsService newsService,
                           ScheduleService scheduleService,
                           com.dazbones.service.AnnualFeeService feeService,
-                          SurveyService surveyService) {
+                          SurveyService surveyService, com.dazbones.service.InstagramService instagram) {
+        this.instagram=instagram;
         this.newsService = newsService;
         this.scheduleService = scheduleService;
         this.feeService = feeService;
@@ -28,7 +30,8 @@ public class PageController {
     }
 
     @GetMapping({"/", "/main"})
-    public String home(Model model, HttpSession session) {
+    public String home(@org.springframework.web.bind.annotation.RequestParam(defaultValue="0") int instagramPage, Model model, HttpSession session) {
+        instagram.view(model,instagramPage,true);
         model.addAttribute("userSession", session.getAttribute("userSession"));
         model.addAttribute("newsList", newsService.visible(session.getAttribute("userSession") != null).stream().limit(3).toList());
         model.addAttribute("memberNewsList", session.getAttribute("userSession") != null ? newsService.memberTop3() : java.util.List.of());
@@ -65,7 +68,8 @@ public class PageController {
     }
 
     @GetMapping("/photo")
-    public String photo(Model model, HttpSession session) {
+    public String photo(@org.springframework.web.bind.annotation.RequestParam(defaultValue="0") int instagramPage, Model model, HttpSession session) {
+        instagram.view(model,instagramPage,false);
         model.addAttribute("userSession", session.getAttribute("userSession"));
         return "photo";
     }

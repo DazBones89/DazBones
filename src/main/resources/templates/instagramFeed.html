@@ -1,0 +1,15 @@
+<!DOCTYPE html><html lang="ja" xmlns:th="http://www.thymeleaf.org"><body><div th:fragment="feed" id="instagram" class="ig-feed">
+<link rel="stylesheet" href="/css/instagram.css"><h2>Instagram</h2>
+<p th:if="${instagramMessage}" th:text="${instagramMessage}" role="status"></p><p class="ig-error" th:if="${instagramError}" th:text="${instagramError}" role="alert"></p>
+<p th:if="${instagramTotal == 0}">登録された投稿はまだありません。</p>
+<a th:if="${userSession != null and userSession.canManage()}" href="/admin/instagram">投稿を登録・削除</a>
+<div th:if="${instagramControls and userSession != null and userSession.isMaster() and instagramTotal > 0}" class="ig-order-note"><p th:text="${instagramCustomOrder ? '手動の並び順（新規投稿は末尾に追加）' : '投稿日時の新しい順'}"></p><form th:action="@{/admin/instagram/order}" method="post"><input type="hidden" name="revision" th:value="${instagramRevision}"><input type="hidden" name="reset" value="true"><button type="submit">投稿順に戻す</button></form></div>
+<div class="ig-grid"><article class="ig-card" th:each="post, row:${instagramPosts}">
+<p th:text="${#temporals.format(post.postedAt,'yyyy/MM/dd') + ' の投稿'}"></p>
+<iframe class="instagram-media" th:src="${post.url + 'embed/captioned/'}" th:title="${#temporals.format(post.postedAt,'yyyy/MM/dd') + ' のInstagram投稿'}" loading="eager" height="680" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+<a class="ig-fallback" th:href="${post.url}" target="_blank" rel="noopener noreferrer">表示されない場合はInstagramで開く ↗</a>
+<form class="ig-order" th:if="${instagramControls and userSession != null and userSession.isMaster()}" th:action="@{/admin/instagram/order}" method="post"><input type="hidden" name="revision" th:value="${instagramRevision}"><input type="hidden" name="id" th:value="${post.id}"><input type="hidden" name="page" th:value="${instagramPage}"><button name="direction" value="-1" th:disabled="${instagramPage == 0 and row.first}" aria-label="この投稿を前へ移動">↑ 前へ</button><button name="direction" value="1" th:disabled="${instagramPage * 6 + row.index + 1 == instagramTotal}" aria-label="この投稿を後ろへ移動">↓ 後ろへ</button></form>
+</article></div>
+<nav class="ig-pagination" th:if="${instagramPages > 1}" aria-label="Instagram投稿のページ"><a th:if="${instagramPage > 0}" th:href="${(instagramControls ? '/' : '/photo') + '?instagramPage=' + (instagramPage - 1) + '#instagram'}">前の6件</a><span th:text="${(instagramPage + 1) + ' / ' + instagramPages}"></span><a th:if="${instagramPage + 1 < instagramPages}" th:href="${(instagramControls ? '/' : '/photo') + '?instagramPage=' + (instagramPage + 1) + '#instagram'}">次の6件</a></nav>
+
+</div></body></html>

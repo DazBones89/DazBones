@@ -34,6 +34,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class SiteIntegrationTest {
     @Autowired MockMvc mvc;
+    @Autowired InstagramPostRepository instagramPosts;
+    @Autowired com.dazbones.service.InstagramService instagramService;
+    @org.springframework.boot.test.mock.mockito.MockBean com.dazbones.service.InstagramMetadataClient instagramMetadata;
     @Autowired com.dazbones.service.InputService inputService;
     @Autowired com.dazbones.service.PlayerVisibility visibility;
     @Autowired SiteSettingRepository settings;
@@ -63,7 +66,7 @@ class SiteIntegrationTest {
 
     @BeforeEach
     void cleanDatabase() {
-        settings.deleteAll(); extraDates.deleteAll();
+        instagramPosts.deleteAll(); settings.deleteAll(); extraDates.deleteAll();
         audits.deleteAll();
         attendanceAnswers.deleteAll();
         annualFees.deleteAll(); gears.deleteAll(); holidays.deleteAll();
@@ -613,5 +616,44 @@ class SiteIntegrationTest {
         mvc.perform(post("/api/input/fee").session(session).with(csrf()).param("playerId",p.getId().toString()).param("year","2026").param("paid","true").param("amount","-1").param("version",saved.getVersion().toString())).andExpect(status().isBadRequest());
         assertThat(annualFees.findByPlayerIdAndFiscalYear(p.getId(),2026).orElseThrow().getAmount()).isEqualTo(5000);
         assertThat(annualFees.findByPlayerIdAndFiscalYear(p.getId(),2025)).isEmpty();
+    }
+
+    @Test void instagramRegistrationSortingReorderAndDeletionRespectRoles() throws Exception {
+        var playerSession=login("editor");var masterSession=login("admin");
+        org.mockito.Mockito.when(instagramMetadata.publishedAt(org.mockito.ArgumentMatchers.any())).thenReturn(LocalDateTime.of(2026,2,22,0,0),LocalDateTime.of(2025,1,1,0,0),LocalDateTime.of(2026,3,1,0,0));
+        for(String code:java.util.List.of("DVETcRUkxMO","OlderPost1","NewerPost1"))mvc.perform(post("/admin/instagram/add").session(playerSession).with(csrf()).param("url","https://www.instagram.com/p/"+code+"/?stkn=shared")).andExpect(status().is3xxRedirection()).andExpect(flash().attributeExists("instagramMessage"));
+        var rows=instagramService.ordered();assertThat(rows).extracting(InstagramPost::getShortcode).containsExactly("NewerPost1","DVETcRUkxMO","OlderPost1");
+        mvc.perform(get("/")).andExpect(status().isOk()).andExpect(content().string(containsString("embed/captioned/"))).andExpect(content().string(not(containsString("この投稿を前へ移動"))));
+        mvc.perform(get("/").session(masterSession)).andExpect(status().isOk()).andExpect(content().string(containsString("この投稿を前へ移動")));
+        String revision=instagramService.revision(rows);
+        mvc.perform(post("/admin/instagram/order").session(playerSession).with(csrf()).param("id",rows.get(1).getId().toString()).param("direction","-1").param("revision",revision)).andExpect(status().isForbidden());
+        mvc.perform(post("/admin/instagram/order").session(masterSession).with(csrf()).param("id",rows.get(1).getId().toString()).param("direction","-1").param("revision",revision)).andExpect(status().is3xxRedirection());
+        assertThat(instagramService.ordered().get(0).getShortcode()).isEqualTo("DVETcRUkxMO");
+        mvc.perform(post("/admin/instagram/order").session(masterSession).with(csrf()).param("reset","true").param("revision",revision)).andExpect(flash().attributeExists("instagramError"));
+        mvc.perform(post("/admin/instagram/order").session(masterSession).with(csrf()).param("reset","true").param("revision",instagramService.revision(instagramService.ordered()))).andExpect(flash().attributeExists("instagramMessage"));
+        assertThat(instagramService.ordered().get(0).getShortcode()).isEqualTo("NewerPost1");
+        mvc.perform(post("/admin/instagram/delete").session(playerSession).with(csrf()).param("ids",rows.get(0).getId().toString(),rows.get(1).getId().toString())).andExpect(status().is3xxRedirection());
+        assertThat(instagramPosts.count()).isEqualTo(1);
+    }
+    @Test void instagramInvalidUnverifiableAndDuplicatePostsAreNotRegistered() throws Exception {
+        var session=login("editor");
+        mvc.perform(post("/admin/instagram/add").with(csrf()).param("url","https://www.instagram.com/p/DVETcRUkxMO/")).andExpect(status().isUnauthorized());
+        mvc.perform(post("/admin/instagram/add").session(session).param("url","https://www.instagram.com/p/DVETcRUkxMO/")).andExpect(status().isForbidden());
+        mvc.perform(post("/admin/instagram/add").session(session).with(csrf()).param("url","https://evil.example/p/DVETcRUkxMO/")).andExpect(flash().attributeExists("instagramError"));
+        org.mockito.Mockito.when(instagramMetadata.publishedAt(org.mockito.ArgumentMatchers.any())).thenThrow(new IllegalArgumentException("投稿を確認できません"));
+        mvc.perform(post("/admin/instagram/add").session(session).with(csrf()).param("url","https://www.instagram.com/p/DVETcRUkxMO/")).andExpect(flash().attributeExists("instagramError"));
+        assertThat(instagramPosts.count()).isZero();
+        org.mockito.Mockito.doReturn(LocalDateTime.of(2026,2,22,0,0)).when(instagramMetadata).publishedAt(org.mockito.ArgumentMatchers.any());
+        for(int i=0;i<2;i++)mvc.perform(post("/admin/instagram/add").session(session).with(csrf()).param("url","https://www.instagram.com/p/DVETcRUkxMO/?igsh=abc")).andExpect(status().is3xxRedirection());
+        assertThat(instagramPosts.count()).isEqualTo(1);
+        mvc.perform(get("/admin/instagram").session(session)).andExpect(status().isOk()).andExpect(content().string(containsString("掲載中の投稿")));
+        mvc.perform(get("/photo")).andExpect(status().isOk()).andExpect(content().string(containsString("instagram-media")));
+    }
+    @Test void instagramFeedPaginatesInsteadOfLoadingAllEmbeds() throws Exception {
+        var u=(UserSession)login("editor").getAttribute("userSession");
+        for(int i=0;i<8;i++)instagramService.add(u,com.dazbones.service.InstagramMetadataClient.normalize("https://www.instagram.com/p/TestPost"+i+"/"),LocalDateTime.of(2026,1,i+1,0,0));
+        mvc.perform(get("/")).andExpect(model().attribute("instagramTotal",8)).andExpect(model().attribute("instagramPosts",org.hamcrest.Matchers.hasSize(6)));
+        mvc.perform(get("/").param("instagramPage","1")).andExpect(model().attribute("instagramPosts",org.hamcrest.Matchers.hasSize(2)));
+        mvc.perform(get("/").param("instagramPage","-99")).andExpect(model().attribute("instagramPage",0));
     }
 }

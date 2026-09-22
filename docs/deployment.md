@@ -17,7 +17,7 @@ docker compose --project-name dazbones --env-file deploy/.env -f deploy/compose.
 
 初期化スクリプトは新しいランダムなDBパスワード、管理者・編集者コードを `deploy/.env` に生成する。既存ファイルは上書きしない。このファイルはGit管理対象外とし、アクセスできるOSユーザーを運用担当者に限定して別途保管する。`.env.example` の仮文字列のままでは本番起動できない。
 
-空DBにはFlyway V0〜V3を適用する。既存のFlyway管理済みDBでは未適用の移行だけ実行する。本番は `baseline-on-migrate=false` のため、未管理の既存DBを誤って初期化しない。旧環境を移す場合は、まず旧環境のスキーマと移行履歴を確認する。
+空DBにはFlyway V0〜V5を適用する。既存のFlyway管理済みDBでは未適用の移行だけ実行する。本番は `baseline-on-migrate=false` のため、未管理の既存DBを誤って初期化しない。旧環境を移す場合は、まず旧環境のスキーマと移行履歴を確認する。
 
 `https://実ドメイン/health/readiness` が `{"status":"UP"}` になり、ログイン、名簿、画像表示を確認できたら利用を開始する。Caddyが証明書の発行・更新を管理する。本番のセッションCookieはSecure/HttpOnly/SameSite=Lax。
 

@@ -1,0 +1,10 @@
+<!DOCTYPE html><html lang="ja" xmlns:th="http://www.thymeleaf.org" th:replace="~{layout :: layout(~{::title}, ~{::section})}"><head><title>インスタ連携 | DazBones</title></head><body><section class="px-4 py-6">
+<link rel="stylesheet" href="/css/input.css"><link rel="stylesheet" href="/css/instagram.css"><h1>インスタ連携</h1>
+<p th:if="${instagramMessage}" th:text="${instagramMessage}" role="status"></p><p class="ig-error" th:if="${instagramError}" th:text="${instagramError}" role="alert"></p>
+<form class="input-card" th:action="@{/admin/instagram/add}" method="post" data-instagram-register><h2>投稿を登録</h2><label>Instagramの投稿URL<input class="ig-url" type="url" name="url" maxlength="2048" th:value="${submittedUrl}" placeholder="https://www.instagram.com/p/…/" required></label><p class="muted">公開・埋め込み許可のある写真やリールのURLを貼り付けてください。投稿の確認に数秒かかります。確認できない投稿は登録しません。</p><button class="primary" type="submit">登録</button><output aria-live="polite"></output></form>
+<h2>掲載中の投稿</h2><p class="muted">ホーム・写真ページは6件ずつ表示します。基本は新しい投稿順です。取得できる情報が日付のみの場合、同日の投稿の時刻順は判定できません。masterはホームで順序を調整できます。</p>
+<a href="/#instagram">ホームの表示を確認</a>
+<p th:if="${#lists.isEmpty(posts)}">登録された投稿はありません。</p>
+<form th:unless="${#lists.isEmpty(posts)}" th:action="@{/admin/instagram/delete}" method="post" data-instagram-delete>
+<div class="input-card ig-manage-row" th:each="post:${posts}"><label><input type="checkbox" name="ids" th:value="${post.id}"><span th:text="${#temporals.format(post.postedAt,'yyyy/MM/dd') + ' の投稿'}"></span></label><a th:href="${post.url}" th:text="${post.url}" target="_blank" rel="noopener noreferrer"></a></div><button class="primary" type="submit">選択した投稿を削除</button><p class="muted">サイト上の掲載を解除します。Instagramの元投稿は残ります。</p></form>
+<script src="/js/instagram-manage.js" defer></script></section></body></html>
