@@ -24,12 +24,14 @@ public class LoginController {
     private final com.dazbones.service.CredentialService credentials;
     private final SecurityContextRepository contexts;
     private final CsrfTokenRepository csrfTokens;
+    private final com.dazbones.service.LoginAttemptLimiter attempts;
 
     public LoginController(com.dazbones.service.CredentialService credentials, SecurityContextRepository contexts,
-                           CsrfTokenRepository csrfTokens) {
+                           CsrfTokenRepository csrfTokens, com.dazbones.service.LoginAttemptLimiter attempts) {
         this.credentials = credentials;
         this.contexts = contexts;
         this.csrfTokens = csrfTokens;
+        this.attempts = attempts;
     }
 
     @GetMapping("/login")
@@ -40,8 +42,21 @@ public class LoginController {
 
     @PostMapping("/login")
     public String login(@RequestParam("code") String code, @RequestParam(required=false) String loginId, HttpServletRequest request,
-                        HttpServletResponse response, RedirectAttributes redirectAttributes) {
-        UserSession user = credentials.authenticate(loginId, code);
+                        HttpServletResponse response, RedirectAttributes redirectAttributes, Model model) {
+        var attempt = attempts.acquire(request.getRemoteAddr());
+        if (!attempt.allowed()) {
+            response.setStatus(429);
+            response.setHeader("Retry-After", Long.toString(attempt.retryAfterSeconds()));
+            model.addAttribute("errorMessage", "ログインの試行回数が上限に達しました。約"
+                    + ((attempt.retryAfterSeconds() + 59) / 60) + "分後に再度お試しください。");
+            return "login";
+        }
+        UserSession user = null;
+        try {
+            user = credentials.authenticate(loginId, code);
+        } finally {
+            attempts.complete(attempt, user != null);
+        }
         if (user != null) {
             HttpSession previous = request.getSession(false);
             if (previous != null) previous.invalidate();

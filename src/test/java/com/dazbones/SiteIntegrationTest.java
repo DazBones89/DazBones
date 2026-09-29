@@ -7,7 +7,7 @@ import com.dazbones.service.SurveyService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.web.servlet.MockMvc;
@@ -36,7 +36,7 @@ class SiteIntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired InstagramPostRepository instagramPosts;
     @Autowired com.dazbones.service.InstagramService instagramService;
-    @org.springframework.boot.test.mock.mockito.MockBean com.dazbones.service.InstagramMetadataClient instagramMetadata;
+    @org.springframework.test.context.bean.override.mockito.MockitoBean com.dazbones.service.InstagramMetadataClient instagramMetadata;
     @Autowired com.dazbones.service.InputService inputService;
     @Autowired com.dazbones.service.PlayerVisibility visibility;
     @Autowired SiteSettingRepository settings;
@@ -584,7 +584,7 @@ class SiteIntegrationTest {
         attendanceService.save(u,p.getId(),LocalDate.of(2026,10,3),"○","翌月",-1L);
         var versions=new java.util.LinkedHashMap<LocalDate,Long>();
         attendanceService.dates(java.time.YearMonth.of(2026,9)).forEach(d->versions.put(d,d.equals(day)?0L:-1L));
-        var mapper=new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules();
+        var mapper=tools.jackson.databind.json.JsonMapper.builder().findAndAddModules().build();
         String body=mapper.writeValueAsString(java.util.Map.of("playerId",p.getId(),"month","2026-09","status","△","versions",versions));
         mvc.perform(post("/api/input/attendance/bulk").session(session).with(csrf()).contentType("application/json").content(body)).andExpect(status().isOk()).andExpect(jsonPath("$.answers.length()").value(versions.size()));
         var saved=attendanceService.answers(java.time.YearMonth.of(2026,9));
@@ -622,6 +622,20 @@ class SiteIntegrationTest {
         mvc.perform(post("/api/input/fee").session(session).with(csrf()).param("playerId",p.getId().toString()).param("year","2026").param("paid","true").param("amount","-1").param("version",saved.getVersion().toString())).andExpect(status().isBadRequest());
         assertThat(annualFees.findByPlayerIdAndFiscalYear(p.getId(),2026).orElseThrow().getAmount()).isEqualTo(5000);
         assertThat(annualFees.findByPlayerIdAndFiscalYear(p.getId(),2025)).isEmpty();
+    }
+
+    @Test void repeatedLoginFailuresAreLimitedDespiteChangedForwardingHeaders() throws Exception {
+        for (int i = 0; i < 10; i++) {
+            mvc.perform(post("/login").with(csrf()).with(r -> { r.setRemoteAddr("192.0.2.44"); return r; })
+                    .header("X-Forwarded-For", "198.51.100." + i).param("code", "wrong"))
+                    .andExpect(status().is3xxRedirection());
+        }
+        mvc.perform(post("/login").with(csrf()).with(r -> { r.setRemoteAddr("192.0.2.44"); return r; })
+                .param("code", "test-admin-code"))
+                .andExpect(status().isTooManyRequests()).andExpect(header().exists("Retry-After"))
+                .andExpect(content().string(containsString("試行回数が上限")));
+        mvc.perform(post("/login").with(csrf()).with(r -> { r.setRemoteAddr("192.0.2.45"); return r; })
+                .param("code", "test-admin-code")).andExpect(redirectedUrl("/main"));
     }
 
     @Test void instagramRegistrationSortingReorderAndDeletionRespectRoles() throws Exception {

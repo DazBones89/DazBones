@@ -6,7 +6,7 @@ COPY src/main/resources/templates ./src/main/resources/templates
 COPY src/main/resources/static/js ./src/main/resources/static/js
 RUN npm ci --ignore-scripts --no-audit --no-fund && npm run build
 
-FROM gradle:8.13-jdk17 AS build
+FROM gradle:8.14.3-jdk17 AS build
 WORKDIR /source
 COPY build.gradle ./
 COPY src ./src
@@ -15,6 +15,7 @@ COPY --from=assets /source/src/main/resources/static/vendor ./src/main/resources
 RUN gradle bootJar --no-daemon
 
 FROM eclipse-temurin:17-jre-jammy
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 RUN groupadd --gid 10001 app && useradd --uid 10001 --gid app --no-create-home app \
     && mkdir -p /app /data/images && chown -R app:app /app /data/images
 WORKDIR /app

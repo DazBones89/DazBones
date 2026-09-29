@@ -1,6 +1,9 @@
 {$SITE_HOST} {
     encode zstd gzip
-    reverse_proxy app:8080
+    reverse_proxy app:8080 {
+        # Spring uses Forwarded before X-Forwarded-For; discard untrusted client values.
+        header_up -Forwarded
+    }
     header X-Content-Type-Options nosniff
     header Referrer-Policy strict-origin-when-cross-origin
 }

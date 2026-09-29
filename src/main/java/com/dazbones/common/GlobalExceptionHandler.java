@@ -14,6 +14,11 @@ import org.slf4j.LoggerFactory;
 public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public Object handleMissingResource(Exception e, HttpServletRequest request, HttpServletResponse response) {
+        return error(404, request, response);
+    }
+
     @ExceptionHandler(ResponseStatusException.class)
     public Object handleStatus(ResponseStatusException e, HttpServletRequest request, HttpServletResponse response) {
         return error(e.getStatusCode().value(), request, response);

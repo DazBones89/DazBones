@@ -1,7 +1,13 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: '10m'
+    max-file: '3'
 services:
   db:
     image: mysql:8.4
     restart: unless-stopped
+    logging: *default-logging
     environment:
       MYSQL_DATABASE: dazbones
       MYSQL_USER: dazbones
@@ -21,6 +27,7 @@ services:
       context: ..
     image: dazbones-site:local
     restart: unless-stopped
+    logging: *default-logging
     depends_on:
       db:
         condition: service_healthy
@@ -39,8 +46,9 @@ services:
       - images:/data/images
     networks: [backend,frontend]
   proxy:
-    image: caddy:2.9.1
+    image: caddy:2.11.4
     restart: unless-stopped
+    logging: *default-logging
     depends_on: [app]
     environment:
       SITE_HOST: ${SITE_HOST:?Set SITE_HOST}

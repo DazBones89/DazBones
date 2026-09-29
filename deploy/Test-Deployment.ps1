@@ -36,7 +36,7 @@ function Wait-Ready([int]$Port){
 try {
     Invoke-CheckCompose $sourceProject $sourceEnv @('up','-d','--no-build')
     Wait-Ready 19080
-    $sql="INSERT INTO players(name,at_bats,hits,delete_flg) VALUES ('deployment-check',10,3,0);"
+    $sql="INSERT INTO players(name,at_bats,hits,delete_flg) VALUES ('deployment-check',10,3,0); INSERT INTO instagram_posts(shortcode,url,posted_at,display_order) VALUES ('RestoreCheck1','https://www.instagram.com/p/RestoreCheck1/','2026-09-01',0); INSERT INTO site_settings(setting_key,setting_value) VALUES ('restore-check','retained');"
     Invoke-CheckCompose $sourceProject $sourceEnv @('exec','-T','db','sh','-c',('MYSQL_PWD="$MYSQL_PASSWORD" mysql -u"$MYSQL_USER" "$MYSQL_DATABASE" -e "'+$sql+'"'))
     Invoke-CheckCompose $sourceProject $sourceEnv @('exec','-T','app','sh','-c','printf restore-test > /data/images/restore-check.txt')
     $config=ConvertFrom-StringData (Get-Content -LiteralPath $sourceEnv -Raw)
@@ -51,7 +51,7 @@ try {
     $headers=@{'X-CSRF-TOKEN'=$inputToken}
     $playerId=$page.players[0].id
     $null=Invoke-RestMethod 'http://localhost:19080/api/input/stats' -Method Post -WebSession $loginSession -Headers $headers -Body @{playerId=$playerId;version=0;atBats=20;hits=5}
-    $null=Invoke-RestMethod 'http://localhost:19080/api/input/fee' -Method Post -WebSession $loginSession -Headers $headers -Body @{playerId=$playerId;year=2026;paid='true';comment='5000';version=-1}
+    $null=Invoke-RestMethod 'http://localhost:19080/api/input/fee' -Method Post -WebSession $loginSession -Headers $headers -Body @{playerId=$playerId;year=2026;paid='true';amount=5000;comment='test';version=-1}
     $null=Invoke-RestMethod 'http://localhost:19080/api/input/gear' -Method Post -WebSession $loginSession -Headers $headers -Body @{name='test-bat';ownerId=$playerId;comment='test';version=-1}
     $null=Invoke-RestMethod 'http://localhost:19080/api/input/date' -Method Post -WebSession $loginSession -Headers $headers -Body @{date='2026-09-16'}
     $null=Invoke-RestMethod 'http://localhost:19080/api/input/attendance' -Method Post -WebSession $loginSession -Headers $headers -Body @{playerId=$playerId;date='2026-09-16';status='×';memo='test';version=-1}
@@ -69,13 +69,23 @@ try {
     $restoredToken=[regex]::Match($restoredLogin.Content,'name="_csrf"[^>]*value="([^"]+)"').Groups[1].Value
     $null=Invoke-WebRequest 'http://localhost:19081/login' -Method Post -WebSession $restoredSession -Body @{code=$config.ADMIN_CODE;_csrf=$restoredToken}
     $restoredInput=Invoke-RestMethod 'http://localhost:19081/api/input?year=2026&month=2026-09' -WebSession $restoredSession
-    if(!$restoredInput.fees[0].paid -or $restoredInput.answers[0].memo -ne 'test'){throw 'Restored input data is missing'}
+    if(!$restoredInput.fees[0].paid -or $restoredInput.fees[0].amount -ne 5000 -or $restoredInput.answers[0].memo -ne 'test'){throw 'Restored input data is missing'}
+    $retained=Invoke-CheckCompose $restoreProject $restoreEnv @('exec','-T','db','sh','-c','MYSQL_PWD="$MYSQL_PASSWORD" mysql -u"$MYSQL_USER" "$MYSQL_DATABASE" -N -e "SELECT COUNT(*) FROM instagram_posts WHERE shortcode=''RestoreCheck1'' AND display_order=0; SELECT COUNT(*) FROM site_settings WHERE setting_key=''restore-check'' AND setting_value=''retained'';"')
+    if(($retained -join ',') -ne '1,1'){throw 'Instagram/settings restore check failed'}
     $image=Invoke-WebRequest 'http://localhost:19081/uploads/images/restore-check.txt'
     $imageText=if($image.Content -is [byte[]]){[Text.Encoding]::UTF8.GetString($image.Content)}else{[string]$image.Content}
     if($imageText -ne 'restore-test'){throw 'Restored upload is missing or corrupted'}
     $versions=Invoke-CheckCompose $restoreProject $restoreEnv @('exec','-T','db','sh','-c','MYSQL_PWD="$MYSQL_PASSWORD" mysql -u"$MYSQL_USER" "$MYSQL_DATABASE" -N -e "SELECT version FROM flyway_schema_history WHERE success=1 ORDER BY installed_rank"')
     if(($versions -join ',') -ne '0,1,2,3,4,5'){throw 'Unexpected migration history'}
-    Write-Output 'PASS: Docker build runtime, blank DB migrations, login, roster, DB backup/restore and image backup/restore.'
+    # A client must not evade the IP budget by changing proxy headers.
+    $limitedPage=Invoke-WebRequest 'http://localhost:19081/login' -SessionVariable limitedSession
+    $limitedToken=[regex]::Match($limitedPage.Content,'name="_csrf"[^>]*value="([^"]+)"').Groups[1].Value
+    for($i=0;$i -lt 10;$i++) {
+        $null=Invoke-WebRequest 'http://localhost:19081/login' -Method Post -WebSession $limitedSession -Headers @{'Forwarded'="for=192.0.2.$i";'X-Forwarded-For'="198.51.100.$i"} -Body @{code='invalid-deployment-check';_csrf=$limitedToken}
+    }
+    $limited=Invoke-WebRequest 'http://localhost:19081/login' -Method Post -WebSession $limitedSession -Headers @{'Forwarded'='for=192.0.2.200';'X-Forwarded-For'='198.51.100.200'} -Body @{code=$config.ADMIN_CODE;_csrf=$limitedToken} -SkipHttpErrorCheck
+    if($limited.StatusCode -ne 429 -or !$limited.Headers['Retry-After']){throw 'Proxy login throttle check failed'}
+    Write-Output 'PASS: Docker runtime, migrations, login, input, DB/images/settings restore and proxy login throttling.'
 } finally {
     # These two random project names are created only by this isolated test; never touch the user's existing project.
     & docker compose --project-name $sourceProject --env-file $sourceEnv -f "$PSScriptRoot/compose.yml" down --volumes

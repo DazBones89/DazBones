@@ -12,10 +12,11 @@ Docker Engine / Docker Desktop、Compose v2、PowerShell 7が必要。画像・D
 
 ```powershell
 ./deploy/Initialize-Environment.ps1 -SiteHost team.example.com
-docker compose --project-name dazbones --env-file deploy/.env -f deploy/compose.yml up -d --build
+docker compose --project-name dazbones --env-file deploy/.env -f deploy/compose.yml build --pull --no-cache
+docker compose --project-name dazbones --env-file deploy/.env -f deploy/compose.yml up -d
 ```
 
-初期化スクリプトは新しいランダムなDBパスワード、管理者・編集者コードを `deploy/.env` に生成する。既存ファイルは上書きしない。このファイルはGit管理対象外とし、アクセスできるOSユーザーを運用担当者に限定して別途保管する。`.env.example` の仮文字列のままでは本番起動できない。
+初期化スクリプトは新しいランダムなDBパスワード、master・選手コードを `deploy/.env` に生成する。既存ファイルは上書きしない。このファイルはGit管理対象外とし、アクセスできるOSユーザーを運用担当者に限定して別途保管する。`.env.example` の仮文字列のままでは本番起動できない。
 
 空DBにはFlyway V0〜V5を適用する。既存のFlyway管理済みDBでは未適用の移行だけ実行する。本番は `baseline-on-migrate=false` のため、未管理の既存DBを誤って初期化しない。旧環境を移す場合は、まず旧環境のスキーマと移行履歴を確認する。
 
@@ -26,7 +27,8 @@ docker compose --project-name dazbones --env-file deploy/.env -f deploy/compose.
 ```powershell
 ./deploy/Backup.ps1
 git pull --ff-only
-docker compose --project-name dazbones --env-file deploy/.env -f deploy/compose.yml up -d --build
+docker compose --project-name dazbones --env-file deploy/.env -f deploy/compose.yml build --pull --no-cache
+docker compose --project-name dazbones --env-file deploy/.env -f deploy/compose.yml up -d
 docker compose --project-name dazbones --env-file deploy/.env -f deploy/compose.yml ps
 docker compose --project-name dazbones --env-file deploy/.env -f deploy/compose.yml logs --tail 100 app db proxy
 ```
@@ -73,3 +75,10 @@ docker build -t dazbones-site:local .
 HTTPのローカル検証中だけ専用overrideでSecure Cookieを解除する。本番設定は変更しない。検証用の環境ファイル・バックアップはGit管理外の `build/deployment-check` に作成する。
 
 GitHub ActionsはPush/PRで、CSS生成差分、48件のJavaテスト、JARビルド、Dockerビルド、同じ復元テストを実行する。リポジトリ側でActionsの実行が有効であることが前提。
+
+
+## 2026-09-29の運用補足
+
+ログイン失敗は同一接続元あたり10分間で10回まで。超過時は429とRetry-Afterを返す。枠は単一アプリのメモリー内にあり再起動で解除される。Caddyは利用者指定のForwardedヘッダーを除去する。アプリを直接公開せず、追加のCDN・プロキシを置く場合は信頼する接続元設定を再点検する。
+
+DB・app・proxyのDockerログは各10MB×3ファイルまで保持する。定期バックアップと外部保管・通知先は公開先決定後に設定する。
