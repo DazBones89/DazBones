@@ -598,10 +598,16 @@ class SiteIntegrationTest {
         mvc.perform(post("/api/input/attendance/bulk").with(csrf()).contentType("application/json").content(body)).andExpect(status().isUnauthorized());
     }
 
-    @Test void socialLinksArePublicButOnlyMembersCanChangeThem() throws Exception {
+    @Test void socialLinksArePublicButOnlyMasterCanChangeThem() throws Exception {
         mvc.perform(get("/sns")).andExpect(status().isOk()).andExpect(content().string(containsString("@dazbones89")));
         mvc.perform(post("/admin/social/add").with(csrf()).param("url","https://www.youtube.com/@dazbones" )).andExpect(status().isUnauthorized());
-        var session=login("editor");
+        var member=login("editor");
+        mvc.perform(get("/sns").session(member)).andExpect(content().string(not(containsString("/admin/social/add")))).andExpect(content().string(not(containsString("/admin/social/delete"))));
+        mvc.perform(post("/admin/social/add").session(member).with(csrf()).param("url","https://www.youtube.com/@dazbones")).andExpect(status().isForbidden());
+        mvc.perform(post("/admin/social/delete").session(member).with(csrf()).param("id","sns.default")).andExpect(status().isForbidden());
+        var session=login("admin");
+        mvc.perform(get("/sns").session(session)).andExpect(content().string(containsString("/admin/social/add")));
+        mvc.perform(get("/")).andExpect(content().string(not(containsString("SNS · Instagram / YouTube"))));
         mvc.perform(post("/admin/social/add").session(session).with(csrf()).param("url","https://www.youtube.com/@dazbones")).andExpect(status().is3xxRedirection());
         mvc.perform(get("/sns")).andExpect(status().isOk()).andExpect(content().string(containsString("YouTube")));
         mvc.perform(post("/admin/social/add").session(session).with(csrf()).param("url","javascript:alert(1)")).andExpect(flash().attributeExists("error"));
@@ -623,7 +629,7 @@ class SiteIntegrationTest {
         org.mockito.Mockito.when(instagramMetadata.publishedAt(org.mockito.ArgumentMatchers.any())).thenReturn(LocalDateTime.of(2026,2,22,0,0),LocalDateTime.of(2025,1,1,0,0),LocalDateTime.of(2026,3,1,0,0));
         for(String code:java.util.List.of("DVETcRUkxMO","OlderPost1","NewerPost1"))mvc.perform(post("/admin/instagram/add").session(playerSession).with(csrf()).param("url","https://www.instagram.com/p/"+code+"/?stkn=shared")).andExpect(status().is3xxRedirection()).andExpect(flash().attributeExists("instagramMessage"));
         var rows=instagramService.ordered();assertThat(rows).extracting(InstagramPost::getShortcode).containsExactly("NewerPost1","DVETcRUkxMO","OlderPost1");
-        mvc.perform(get("/")).andExpect(status().isOk()).andExpect(content().string(containsString("embed/captioned/"))).andExpect(content().string(not(containsString("この投稿を前へ移動"))));
+        mvc.perform(get("/")).andExpect(status().isOk()).andExpect(content().string(containsString("https://www.instagram.com/embed.js"))).andExpect(content().string(not(containsString("この投稿を前へ移動"))));
         mvc.perform(get("/").session(masterSession)).andExpect(status().isOk()).andExpect(content().string(containsString("この投稿を前へ移動")));
         String revision=instagramService.revision(rows);
         mvc.perform(post("/admin/instagram/order").session(playerSession).with(csrf()).param("id",rows.get(1).getId().toString()).param("direction","-1").param("revision",revision)).andExpect(status().isForbidden());
