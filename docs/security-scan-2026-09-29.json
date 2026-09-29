@@ -1,0 +1,36 @@
+[
+  {
+    "target": "trivy-fixed",
+    "critical": 0,
+    "high": 0,
+    "medium": 13,
+    "low": 16,
+    "unknown": 0,
+    "imageId": "sha256:b3b8feb661434e3042607fd5d5d243f139f1b9677a8ce3329c7a8096ae02e448",
+    "repoDigests": null
+  },
+  {
+    "target": "caddy",
+    "critical": 0,
+    "high": 17,
+    "medium": 7,
+    "low": 4,
+    "unknown": 1,
+    "imageId": "sha256:2d8b1708bf8008935c0e2a9b6564f7f080cf9a73af3b27718f286230449b7101",
+    "repoDigests": [
+      "caddy@sha256:0c994536bddb66445885237f1a5dcc1916bccea922661c76b4e9fc24061f9b52"
+    ]
+  },
+  {
+    "target": "mysql",
+    "critical": 1,
+    "high": 37,
+    "medium": 27,
+    "low": 6,
+    "unknown": 1,
+    "imageId": "sha256:ee241324a55f4651d8601d3dcd4a294c5d6c363c46263f7e8d542bbc9c0deacc",
+    "repoDigests": [
+      "mysql@sha256:0744ee5ef89ce6ccfa13de3e579fe6b9e27f93dd70da9c06d2c908b1b193fb8d"
+    ]
+  }
+]
