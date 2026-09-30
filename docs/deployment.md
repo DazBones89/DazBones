@@ -67,14 +67,23 @@ pwsh -NoProfile -File /配置先/DazBones/deploy/Backup.ps1 -Keep 5
 
 ```powershell
 docker build -t dazbones-site:local .
+docker build -f deploy/mysql.Dockerfile -t dazbones-mysql:local .
+docker build -f deploy/proxy.Dockerfile -t dazbones-proxy:local .
 ./deploy/Test-Deployment.ps1
+./deploy/Scan-Images.ps1
 ```
 
 このテストは固有名の検証用Compose環境を2つ作り、空DB移行、ログイン、名簿表示、DB・画像のバックアップと別環境への復元を確認する。終了時にその2つの検証環境だけを削除する。既存の `dazbones-mysql` には接続しない。ポート19080/19081/19443/19444を使用するため、空けておく。
 
 HTTPのローカル検証中だけ専用overrideでSecure Cookieを解除する。本番設定は変更しない。検証用の環境ファイル・バックアップはGit管理外の `build/deployment-check` に作成する。
 
-GitHub ActionsはPush/PRで、CSS生成差分、48件のJavaテスト、JARビルド、Dockerビルド、同じ復元テストを実行する。リポジトリ側でActionsの実行が有効であることが前提。
+GitHub ActionsはPush/PRで、CSS生成差分、Java・JavaScriptテスト、JARビルド、3種類のDockerビルド、同じ復元テスト、脆弱性スキャンを実行する。High/Criticalが検出された場合は失敗し、JSONレポートを成果物として保存する。リポジトリ側でActionsの実行が有効であることが前提。
+
+## 公開用イメージの保守
+
+MySQLは公式8.4をベースにOSを更新し、未使用のMySQL Shellと同梱Pythonを除去する。mysql/mysqldumpは保持し、起動時の権限切り替えに使うgosu 1.19をGo 1.26.6で再ビルドする。Caddy 2.11.4は標準モジュールを含め、deploy/proxy/go.mod・go.sumで依存を固定して同じGoでビルドする。
+
+更新時は全イメージを再ビルドして復元テストとスキャンを実施する。スキャン結果はbuild/security-scanに保存される。Medium/Low/Unknownもレビュー対象であり、High/Criticalが0件でも安全性の保証にはならない。CEL 0.29.0は現CaddyとAPI互換性がないため0.28.1を維持し、残る指摘はsecurity-scan-2026-09-30.mdに記録する。
 
 
 ## 2026-09-29の運用補足

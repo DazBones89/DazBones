@@ -1,0 +1,29 @@
+[
+  {
+    "image": "dazbones-site:local",
+    "imageId": "sha256:b3b8feb661434e3042607fd5d5d243f139f1b9677a8ce3329c7a8096ae02e448",
+    "critical": 0,
+    "high": 0,
+    "medium": 13,
+    "low": 16,
+    "unknown": 0
+  },
+  {
+    "image": "dazbones-proxy:local",
+    "imageId": "sha256:61b67a18845d8d0efa09f9a699b6a28fd9a1703f6abcf62612047b958a8941e3",
+    "critical": 0,
+    "high": 0,
+    "medium": 1,
+    "low": 0,
+    "unknown": 1
+  },
+  {
+    "image": "dazbones-mysql:local",
+    "imageId": "sha256:d9caf69ae93f48a0a683340e948aad427d3c989fdac763de175d2d04b239f2bd",
+    "critical": 0,
+    "high": 0,
+    "medium": 0,
+    "low": 0,
+    "unknown": 1
+  }
+]

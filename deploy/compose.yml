@@ -5,7 +5,10 @@ x-logging: &default-logging
     max-file: '3'
 services:
   db:
-    image: mysql:8.4
+    build:
+      context: ..
+      dockerfile: deploy/mysql.Dockerfile
+    image: dazbones-mysql:local
     restart: unless-stopped
     logging: *default-logging
     environment:
@@ -46,7 +49,10 @@ services:
       - images:/data/images
     networks: [backend,frontend]
   proxy:
-    image: caddy:2.11.4
+    build:
+      context: ..
+      dockerfile: deploy/proxy.Dockerfile
+    image: dazbones-proxy:local
     restart: unless-stopped
     logging: *default-logging
     depends_on: [app]

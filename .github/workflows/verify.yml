@@ -33,5 +33,14 @@ jobs:
       - uses: actions/checkout@v4
       - run: docker build -t dazbones-site:ci .
       - run: docker tag dazbones-site:ci dazbones-site:local
+      - run: docker build -f deploy/mysql.Dockerfile -t dazbones-mysql:local .
+      - run: docker build -f deploy/proxy.Dockerfile -t dazbones-proxy:local .
       - shell: pwsh
         run: ./deploy/Test-Deployment.ps1
+      - shell: pwsh
+        run: ./deploy/Scan-Images.ps1
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-scan
+          path: build/security-scan/*.json
