@@ -64,6 +64,25 @@ class SiteIntegrationTest {
     @Autowired GearRepository gears;
     @Autowired com.dazbones.service.GearService gearService;
 
+    @Test
+    void contactIsPublicButOnlyMasterCanEditAndTextIsEscaped() throws Exception {
+        mvc.perform(post("/admin/contact").with(csrf()).param("contactText", "blocked"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(post("/admin/contact").session(login("editor")).with(csrf()).param("contactText", "blocked"))
+                .andExpect(status().isForbidden());
+        String text = "代表連絡先\nteam@example.com\n<script>alert(1)</script>";
+        mvc.perform(post("/admin/contact").session(login("admin")).with(csrf()).param("contactText", text))
+                .andExpect(redirectedUrl("/contact"));
+        assertThat(settings.findById("contact.text").orElseThrow().value).isEqualTo(text);
+        mvc.perform(get("/contact")).andExpect(status().isOk())
+                .andExpect(content().string(containsString("team@example.com")))
+                .andExpect(content().string(containsString("&lt;script&gt;")))
+                .andExpect(content().string(not(containsString("<textarea"))));
+        mvc.perform(post("/admin/contact").session(login("admin")).with(csrf()).param("contactText", "x".repeat(5001)))
+                .andExpect(flash().attributeExists("error"));
+        assertThat(settings.findById("contact.text").orElseThrow().value).isEqualTo(text);
+    }
+
     @BeforeEach
     void cleanDatabase() {
         instagramPosts.deleteAll(); settings.deleteAll(); extraDates.deleteAll();

@@ -11,18 +11,18 @@
 <section class="db-home">
 
     <!-- ファーストビュー -->
-    <div class="relative h-[390px] overflow-hidden bg-gray-200">
+    <div class="relative overflow-hidden bg-gray-200">
         <img src="/uploads/images/group-photo.jpg"
              onerror="this.onerror=null; this.src='/images/no-image.png';"
              alt="DazBones 集合写真"
-             class="h-full w-full object-cover">
+             class="block h-auto w-full">
 
         <div class="absolute inset-0 bg-gradient-to-t from-black/65 via-black/15 to-transparent"></div>
 
-        <div class="absolute bottom-8 left-5 right-5 text-white">
-            <p class="db-hero-shadow text-2xl font-black">草野球チーム</p>
-            <h1 class="db-hero-shadow mt-1 text-5xl font-black italic">DazBones</h1>
-            <p class="db-hero-shadow mt-3 text-base font-bold">楽しく、熱く、全力で。</p>
+        <div class="absolute bottom-3 left-4 right-4 sm:bottom-8 text-white">
+            <p class="db-hero-shadow text-sm sm:text-2xl font-black">草野球チーム</p>
+            <h1 class="db-hero-shadow mt-1 text-3xl sm:text-5xl font-black italic">DazBones</h1>
+            <p class="db-hero-shadow mt-1 sm:mt-3 text-xs sm:text-base font-bold">楽しく、熱く、全力で。</p>
         </div>
     </div>
 
@@ -56,8 +56,8 @@
     <div class="px-4 pb-6">
         <div class="grid grid-cols-4 gap-3">
             <a th:href="@{/players}" class="rounded-2xl bg-white p-3 text-center shadow-md ring-1 ring-gray-100">
-                <div class="text-3xl">⚾</div>
-                <div class="mt-2 text-xs font-black db-brown">チーム紹介</div>
+                <div class="text-3xl" aria-hidden="true">👕</div>
+                <div class="mt-2 text-xs font-black db-brown">選手紹介</div>
             </a>
 
             <a th:href="@{/schedule}" class="rounded-2xl bg-white p-3 text-center shadow-md ring-1 ring-gray-100">
