@@ -1,0 +1,4 @@
+# Deployment scripts execute on Linux even when edited on Windows.
+deploy/*.sh text eol=lf
+deploy/*.service text eol=lf
+deploy/*.timer text eol=lf
