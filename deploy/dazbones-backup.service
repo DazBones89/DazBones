@@ -1,0 +1,12 @@
+[Unit]
+Description=DazBones database and image backup
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/dazbones
+ExecStart=/bin/bash /home/ubuntu/dazbones/Backup-Oracle.sh
+TimeoutStartSec=15min
+UMask=0077

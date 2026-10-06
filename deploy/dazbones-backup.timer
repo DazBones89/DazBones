@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily DazBones backup at 04:00 Japan time
+
+[Timer]
+OnCalendar=*-*-* 04:00:00 Asia/Tokyo
+Persistent=true
+AccuracySec=1min
+Unit=dazbones-backup.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,30 @@
+# External managed MySQL; initial app verification is accessible only on the VM.
+services:
+  app:
+    image: dazbones-site:local
+    restart: unless-stopped
+    mem_limit: 640m
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:mysql://10.0.0.85:3306/dazbones?serverTimezone=Asia/Tokyo&characterEncoding=UTF-8&sslMode=REQUIRED
+      DB_USERNAME: dazbones
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
+      ADMIN_CODE: ${ADMIN_CODE:?Set ADMIN_CODE}
+      EDITOR_CODE: ${EDITOR_CODE:?Set EDITOR_CODE}
+      JAVA_TOOL_OPTIONS: -Xms64m -Xmx256m -XX:+UseSerialGC -XX:MaxMetaspaceSize=192m -XX:ReservedCodeCacheSize=64m -Xss512k
+      UPLOAD_DIR: /data/images
+      TZ: Asia/Tokyo
+    ports:
+      - '127.0.0.1:8080:8080'
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    volumes:
+      - images:/data/images
+volumes:
+  images:
