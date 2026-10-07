@@ -6,5 +6,5 @@
 <a href="/#instagram">ホームの表示を確認</a>
 <p th:if="${#lists.isEmpty(posts)}">登録された投稿はありません。</p>
 <form th:unless="${#lists.isEmpty(posts)}" th:action="@{/admin/instagram/delete}" method="post" data-instagram-delete>
-<div class="input-card ig-manage-row" th:each="post:${posts}"><label><input type="checkbox" name="ids" th:value="${post.id}"><span th:text="${#temporals.format(post.postedAt,'yyyy/MM/dd') + ' の投稿'}"></span></label><a th:href="${post.url}" th:text="${post.url}" target="_blank" rel="noopener noreferrer"></a></div><button class="primary" type="submit">選択した投稿を削除</button><p class="muted">サイト上の掲載を解除します。Instagramの元投稿は残ります。</p></form>
+<div class="input-card ig-manage-row" th:each="post:${posts}"><label><input type="checkbox" name="ids" th:value="${post.id}"><span th:text="${#temporals.format(post.postedAt,'yyyy/MM/dd')}"></span></label><a th:href="${post.url}" th:text="${post.url}" target="_blank" rel="noopener noreferrer"></a></div><button class="primary" type="submit">選択した投稿を削除</button><p class="muted">サイト上の掲載を解除します。Instagramの元投稿は残ります。</p></form>
 <script src="/js/instagram-manage.js" defer></script></section></body></html>

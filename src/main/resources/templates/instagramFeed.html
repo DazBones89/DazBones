@@ -5,7 +5,7 @@
 <a th:if="${userSession != null and userSession.canManage()}" href="/admin/instagram">投稿を登録・削除</a>
 <div th:if="${instagramControls and userSession != null and userSession.isMaster() and instagramTotal > 0}" class="ig-order-note"><p th:text="${instagramCustomOrder ? '手動の並び順（新規投稿は末尾に追加）' : '投稿日時の新しい順'}"></p><form th:action="@{/admin/instagram/order}" method="post"><input type="hidden" name="revision" th:value="${instagramRevision}"><input type="hidden" name="reset" value="true"><button type="submit">投稿順に戻す</button></form></div>
 <div class="ig-grid"><article class="ig-card" th:each="post, row:${instagramPosts}">
-<p th:text="${#temporals.format(post.postedAt,'yyyy/MM/dd') + ' の投稿'}"></p>
+<p th:text="${#temporals.format(post.postedAt,'yyyy/MM/dd')}"></p>
 <a class="ig-fallback" th:href="${post.url}" target="_blank" rel="noopener noreferrer">Instagramで投稿を開く ↗</a>
 <blockquote class="instagram-media" data-instgrm-version="14" data-instgrm-captioned th:attr="data-instgrm-permalink=${post.url}"><a th:href="${post.url}" target="_blank" rel="noopener noreferrer">Instagramの投稿を読み込んでいます。表示されない場合は上のリンクからご覧ください。</a></blockquote>
 <form class="ig-order" th:if="${instagramControls and userSession != null and userSession.isMaster()}" th:action="@{/admin/instagram/order}" method="post"><input type="hidden" name="revision" th:value="${instagramRevision}"><input type="hidden" name="id" th:value="${post.id}"><input type="hidden" name="page" th:value="${instagramPage}"><button name="direction" value="-1" th:disabled="${instagramPage == 0 and row.first}" aria-label="この投稿を前へ移動">↑ 前へ</button><button name="direction" value="1" th:disabled="${instagramPage * 6 + row.index + 1 == instagramTotal}" aria-label="この投稿を後ろへ移動">↓ 後ろへ</button></form>
