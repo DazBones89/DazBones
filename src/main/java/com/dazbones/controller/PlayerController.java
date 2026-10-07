@@ -84,6 +84,7 @@ public class PlayerController {
         players.sort(ordering.thenComparing(byNumber).thenComparing(Player::getId));
 
         model.addAttribute("players", players);
+        model.addAttribute("playerCount", players.stream().filter(p -> Integer.valueOf(0).equals(p.getDeleteFlg())).count());
         model.addAttribute("userSession", user);
         model.addAttribute("sort", sort);
 
