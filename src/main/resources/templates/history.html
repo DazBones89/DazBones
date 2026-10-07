@@ -9,7 +9,10 @@
 <p th:if="${history.isEmpty()}">この年度の活動記録はありません。</p>
 <article th:each="s:${history}" class="rounded-xl border p-4 space-y-2">
 <p th:text="${#temporals.format(s.eventDate,'yyyy.MM.dd')}" class="text-sm text-gray-500"></p><h2 th:text="${s.title}" class="text-xl font-bold"></h2>
-<p th:text="${s.eventType}"></p><p th:if="${s.opponent != null and !s.opponent.isEmpty()}" th:text="'対戦相手：'+${s.opponent}"></p>
-<p th:text="${s.location}"></p><p><span th:text="${s.resultStatus}"></span> <span th:text="${s.score}"></span></p><p th:text="${s.comment}" class="whitespace-pre-line"></p>
+<p th:if="${s.opponent != null and !s.opponent.isEmpty()}" th:text="${(s.eventType == '練習' ? '合同練習相手：' : '対戦相手：') + s.opponent}"></p>
+<p th:if="${s.resultStatus != null and !s.resultStatus.isEmpty()}" th:text="${s.resultStatus + (s.score != null and !s.score.isEmpty() ? '：' + s.score : '')}"></p>
+<p th:if="${s.location != null and !s.location.isEmpty()}" th:text="${'球場：' + s.location}"></p>
+<p th:if="${s.startTime != null}" th:text="${'時間：' + #temporals.format(s.startTime,'HH:mm') + (s.endTime != null ? '〜' + #temporals.format(s.endTime,'HH:mm') : '')}"></p>
+<p th:if="${s.comment != null and !s.comment.isEmpty()}" th:text="${s.comment}" class="whitespace-pre-line"></p>
 <a th:if="${userSession != null and userSession.canManage()}" th:href="@{/admin/schedules/{id}/edit(id=${s.id})}" class="underline">記録を編集</a></article>
 </section></body></html>
