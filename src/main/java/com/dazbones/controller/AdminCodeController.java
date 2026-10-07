@@ -18,6 +18,7 @@ public class AdminCodeController {
     @PostMapping("/admin/code")
     public String change(@RequestParam(defaultValue="master") String role,@RequestParam String currentCode,@RequestParam String newCode,@RequestParam String confirmation,
                          HttpSession session,Model model,RedirectAttributes flash){
+        model.addAttribute("selectedRole", role);
         try { credentials.changeCode(role,currentCode,newCode,confirmation); }
         catch(IllegalArgumentException e){model.addAttribute("errorMessage",e.getMessage()); return page(session,model);}
         session.invalidate(); SecurityContextHolder.clearContext();

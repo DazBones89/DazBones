@@ -530,7 +530,11 @@ class SiteIntegrationTest {
     }
     @Test void codeChangeRevokesBothRolesAndPersists() throws Exception {
         var master=login("admin");var player=login("editor");var other=login("admin");
-        mvc.perform(post("/admin/code").session(master).with(csrf()).param("role","player").param("currentCode","test-admin-code").param("newCode","new-shared").param("confirmation","new-shared")).andExpect(redirectedUrl("/login"));
+        mvc.perform(post("/admin/code").session(master).with(csrf()).param("role","player").param("currentCode","test-admin-code").param("newCode","new-shared").param("confirmation","new-shared"))
+            .andExpect(status().isOk()).andExpect(model().attribute("selectedRole","player"))
+            .andExpect(content().string(containsString("現在の選手コードが違います")));
+        assertThat(credentialService.authenticate(null,"test-editor-code")).isNotNull();
+        mvc.perform(post("/admin/code").session(master).with(csrf()).param("role","player").param("currentCode","test-editor-code").param("newCode","new-shared").param("confirmation","new-shared")).andExpect(redirectedUrl("/login"));
         for(var session:new MockHttpSession[]{player,other})mvc.perform(get("/api/input").session(session).param("year","2026").param("month","2026-09")).andExpect(status().isUnauthorized());
         credentialService.initialize();assertThat(credentialService.authenticate(null,"test-editor-code")).isNull();assertThat(credentialService.authenticate(null,"new-shared").getRole()).isEqualTo("player");
     }

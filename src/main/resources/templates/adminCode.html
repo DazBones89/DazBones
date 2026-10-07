@@ -34,11 +34,11 @@
                    th:name="${_csrf.parameterName}"
                    th:value="${_csrf.token}">
 
-            <label>変更対象<select name="role"><option value="master">master</option><option value="player">選手</option></select></label>
+            <label>変更対象<select name="role" id="codeRole"><option value="master">master</option><option value="player" th:selected="${selectedRole == 'player'}">選手</option></select></label>
             <div>
-                <label class="mb-1 block text-sm font-bold db-brown">現在のmasterコード</label>
+                <label id="currentCodeLabel" for="currentCode" class="mb-1 block text-sm font-bold db-brown" th:text="${selectedRole == 'player' ? '現在の選手コード' : '現在のmasterコード'}">現在のmasterコード</label>
                 <input type="password"
-                       name="currentCode"
+                       name="currentCode" id="currentCode" autocomplete="current-password"
                        class="w-full rounded-xl border px-4 py-3">
             </div>
 
@@ -61,6 +61,6 @@
         </form>
     </div>
 
-</section>
+<script src="/js/admin-code.js" defer></script></section>
 </body>
 </html>

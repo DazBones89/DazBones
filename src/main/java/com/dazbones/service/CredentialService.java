@@ -75,8 +75,8 @@ public class CredentialService {
         if(next==null || next.isBlank() || next.getBytes(StandardCharsets.UTF_8).length>72)throw new IllegalArgumentException("コードは1〜72バイトで入力してください");
         if(!next.equals(confirmation))throw new IllegalArgumentException("確認用コードが一致しません");
         SecurityState state=states.lockState();
-        var master=credentials.findById("master").orElseThrow();
-        if(current==null || !encoder.matches(current,master.getCodeHash()))throw new IllegalArgumentException("現在のmasterコードが違います");
+        var target=credentials.findById(role).orElseThrow();
+        if(current==null || !encoder.matches(current,target.getCodeHash()))throw new IllegalArgumentException("現在の"+(role.equals("master")?"master":"選手")+"コードが違います");
         var other=credentials.findById(role.equals("master")?"player":"master").orElseThrow();
         if(encoder.matches(next,other.getCodeHash()))throw new IllegalArgumentException("役割ごとに異なるコードを設定してください");
         var c=credentials.findById(role).orElseThrow(); c.setCodeHash(encoder.encode(next));credentials.saveAndFlush(c);state.advance();states.save(state);
