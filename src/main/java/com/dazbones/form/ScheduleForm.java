@@ -21,9 +21,12 @@ public class ScheduleForm {
     private String title;
 
     @NotNull(message = "日付は必須です")
+    @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
     private LocalDate eventDate;
 
+    @org.springframework.format.annotation.DateTimeFormat(pattern = "HH:mm")
     private LocalTime startTime;
+    @org.springframework.format.annotation.DateTimeFormat(pattern = "HH:mm")
     private LocalTime endTime;
 
     @Size(max = 255)

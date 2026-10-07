@@ -278,7 +278,10 @@ class SiteIntegrationTest {
                 .andExpect(redirectedUrl("/admin/schedules"));
         Long id = schedules.findAll().get(0).getId();
         mvc.perform(get("/admin/schedules/{id}/edit", id).session(session)).andExpect(status().isOk())
-                .andExpect(content().string(containsString("練習")));
+                .andExpect(content().string(containsString("練習")))
+                .andExpect(content().string(containsString("value=\"2026-09-12\"")))
+                .andExpect(content().string(containsString("value=\"10:00\"")))
+                .andExpect(content().string(containsString("value=\"12:00\"")));
         mvc.perform(post("/admin/schedules/{id}/edit", id).session(session).with(csrf()).param("version", schedules.findById(id).orElseThrow().getVersion().toString())
                         .param("title", "練習試合").param("eventDate", "2026-09-12")
                         .param("location", "球場").param("resultStatus", "勝利").param("score", "5-3"))
