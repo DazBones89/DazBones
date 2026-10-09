@@ -40,8 +40,32 @@ async function screen(tab, options = {}) {
     input.dispatchEvent(new window.Event('input', { bubbles: true }));
     input.dispatchEvent(new window.Event('change', { bubbles: true }));
   };
+  if (options.selectPlayer !== false && tab !== 'gear') {
+    change(q('#inputPlayer'), '1');
+    await tick();
+  }
   return { dom, window, state, calls, q, qa, change };
 }
+
+test('player selection starts blank and only selected players can answer', async () => {
+  const s = await screen('attendance', { selectPlayer: false });
+  try {
+    assert.equal(s.q('#inputPlayer').value, '');
+    assert.equal(s.q('#inputPlayer option').textContent, '');
+    assert.equal(s.q('.attendance-form'), null);
+    assert.equal(s.q('.bulk-attendance input[type=checkbox]').disabled, true);
+    assert.equal(s.calls.length, 0);
+    s.change(s.q('#inputPlayer'), '2');
+    await until(() => s.q('.attendance-form'));
+    s.change(s.q('input[value="○"]'), true);
+    await until(() => s.calls.length === 1);
+    assert.equal(s.calls[0].values.playerId, '2');
+    s.change(s.q('#inputPlayer'), '');
+    await until(() => !s.q('.attendance-form'));
+    assert.equal(s.q('#inputPlayer').value, '');
+    assert.equal(s.q('.bulk-attendance input[type=checkbox]').disabled, true);
+  } finally { s.dom.window.close(); }
+});
 
 test('stats autosave serializes rapid changes using the returned version', async () => {
   let release;
