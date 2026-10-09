@@ -1,0 +1,11 @@
+<!DOCTYPE html><html xmlns:th="http://www.thymeleaf.org"><body>
+<div th:fragment="switcher" class="input-card">
+<label for="playerMode">操作</label>
+<select id="playerMode"><option value="add" th:selected="${player == null}">新規登録</option><option value="edit" th:selected="${player != null}">登録済み選手を編集</option></select>
+<div id="editPlayerPicker" th:hidden="${player == null}">
+<label for="editPlayer">編集する選手</label>
+<select id="editPlayer"><option value="">選手を選択してください</option>
+<option th:each="p:${editablePlayers}" th:value="${p.id}" th:selected="${player != null and player.id == p.id}" th:text="${visible.name ? p.name : '選手 #' + p.id}"></option>
+</select></div>
+<script src="/js/player-switcher.js" defer></script>
+</div></body></html>

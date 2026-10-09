@@ -27,6 +27,12 @@ public class PlayerController {
     @org.springframework.beans.factory.annotation.Autowired private com.dazbones.service.PlayerVisibility visibility;
     @org.springframework.beans.factory.annotation.Autowired private jakarta.validation.Validator validator;
     private final PlayerService service;
+    @ModelAttribute("editablePlayers")
+    public List<Player> editablePlayers(HttpSession session) {
+        UserSession user = (UserSession) session.getAttribute("userSession");
+        if (user == null || !user.canManage()) return List.of();
+        return user.isMaster() ? service.getAll() : service.getActivePlayers();
+    }
     @ModelAttribute("visible") public java.util.Map<String,Boolean> visible(HttpSession session){return visibility.fields((UserSession)session.getAttribute("userSession"));}
     private void preserveHidden(PlayerForm f,Player p,HttpSession session){
         var v=visible(session);

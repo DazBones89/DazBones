@@ -531,6 +531,23 @@ class SiteIntegrationTest {
         mvc.perform(get("/input").session(session).param("tab","fee").param("year","2025")).andExpect(redirectedUrl("/fee?year=2025"));
         mvc.perform(get("/players/stats")).andExpect(redirectedUrl("/login"));
     }
+    @Test void bothRolesCanSelectAndEditPlayerProfile() throws Exception {
+        var p=player("編集対象",1,1,"投手");
+        for(String role : new String[]{"editor","admin"}) {
+            var session=login(role);
+            mvc.perform(get("/players/add").session(session)).andExpect(status().isOk())
+                .andExpect(content().string(containsString("登録済み選手を編集")))
+                .andExpect(content().string(containsString("編集対象")));
+            mvc.perform(get("/players/{id}/edit",p.getId()).session(session)).andExpect(status().isOk())
+                .andExpect(content().string(containsString("現在の選手写真")))
+                .andExpect(content().string(containsString("一言")));
+            mvc.perform(post("/players/{id}/edit",p.getId()).session(session).with(csrf())
+                .param("version",players.findById(p.getId()).orElseThrow().getVersion().toString())
+                .param("name","編集対象").param("backNumber","11").param("comment","よろしくお願いします"))
+                .andExpect(redirectedUrl("/players"));
+            assertThat(players.findById(p.getId()).orElseThrow().getComment()).isEqualTo("よろしくお願いします");
+        }
+    }
     @Test void codeChangeRevokesBothRolesAndPersists() throws Exception {
         var master=login("admin");var player=login("editor");var other=login("admin");
         mvc.perform(post("/admin/code").session(master).with(csrf()).param("role","player").param("currentCode","test-admin-code").param("newCode","new-shared").param("confirmation","new-shared"))
