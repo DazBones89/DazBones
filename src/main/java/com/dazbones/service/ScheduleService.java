@@ -30,7 +30,7 @@ public class ScheduleService {
     }
 
     public List<Schedule> getAll() {
-        return repo.findAll(org.springframework.data.domain.Sort.by("eventDate", "startTime", "id"));
+        return repo.findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "eventDate", "startTime", "id"));
     }
 
     public List<Schedule> getRange(LocalDate start, LocalDate end) {
