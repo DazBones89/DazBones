@@ -105,6 +105,26 @@ test('current batting corrections apply differences and cumulative values remain
   } finally {s.dom.window.close();}
 });
 
+test('compact calendar shows only target days as unanswered and tracks selected player answers', async () => {
+  const s=await screen('attendance');
+  try {
+    const day=d=>s.q(`[data-answer-date="2026-09-${d}"]`);
+    assert.equal(s.qa('.calendar-day').length,2);
+    assert.equal(day('05').dataset.status,'unanswered');
+    assert.equal(s.q('.attendance-editor select'),null);
+    for(const status of ['○','×','△']){
+      s.change(s.q(`input[value="${status}"]`),true);
+      await until(()=>day('05').dataset.status===status);
+      assert.equal(s.q('.attendance-form').dataset.status,status);
+      assert.equal(day('05').querySelector('.calendar-answer').textContent,status);
+    }
+    day('06').click();await until(()=>day('06').getAttribute('aria-pressed')==='true');
+    assert.equal(s.q('.attendance-form').dataset.status,'unanswered');
+    s.change(s.q('#inputPlayer'),'2');await until(()=>day('05').dataset.status==='unanswered');
+    assert.equal(day('05').querySelector('.calendar-answer').textContent,'−');
+  } finally{s.dom.window.close();}
+});
+
 test('fee check moves the name between paid and unpaid without navigation', async () => {
   const s = await screen('fee');
   try {

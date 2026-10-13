@@ -66,6 +66,29 @@ function gear(){content.append(el('p','道具の種類・持ち主を設定し�
  c.append(button('削除',async()=>{if(!g.id){name.value='';memo.value='';return;}if(!await flush()||!confirm('この道具を削除しますか？'))return;try{await post('/api/input/gear',{id:g.id,version:g.version,delete:true});data.gears=data.gears.filter(x=>x.id!==g.id);render();}catch(e){notice.textContent=e.message;}},'danger'));content.append(c);}}
 const dateLabel=d=>new Date(d+'T12:00:00').toLocaleDateString('ja-JP',{month:'2-digit',day:'2-digit',weekday:'short'});
 function attendance(){
+ function updateCalendar(){
+  editor.querySelectorAll('[data-answer-date]').forEach(cell=>{
+   const date=cell.dataset.answerDate,a=data.answers.find(a=>a.playerId===selected&&a.date===date);
+   const status=['○','△','×'].includes(a?.status)?a.status:'';
+   cell.dataset.status=status||'unanswered';cell.querySelector('.calendar-answer').textContent=selected?(status||'−'):'';
+   cell.setAttribute('aria-label',`${dateLabel(date)} ${selected?(status||'未回答'):'回答対象日'}`);
+   cell.setAttribute('aria-pressed',String(date===day));
+  });
+ }
+ function renderCalendar(){
+  const calendar=el('div',undefined,'attendance-calendar');calendar.setAttribute('aria-label','回答する日付');
+  for(const name of ['日','月','火','水','木','金','土'])calendar.append(el('span',name,'calendar-weekday'));
+  const [y,m]=month.split('-').map(Number),offset=new Date(y,m-1,1).getDay(),last=new Date(y,m,0).getDate();
+  for(let i=0;i<offset;i++)calendar.append(el('span'));
+  for(let n=1;n<=last;n++){
+   const date=`${month}-${String(n).padStart(2,'0')}`;
+   if(!data.dates.includes(date)){calendar.append(el('span',String(n),'calendar-inactive'));continue;}
+   const cell=button('',async()=>{if(actionBusy||!await flush())return;day=date;renderDetail();},'calendar-day');
+   cell.dataset.answerDate=date;cell.append(el('span',String(n)),el('strong','','calendar-answer'));calendar.append(cell);
+  }
+  editor.append(calendar,el('p','○ 青：参加　△ 黄：未定　× 赤：不参加　グレー：未回答','calendar-legend'));
+  updateCalendar();
+ }
  async function changeMonth(value){if(!await flush())return;month=value;year=Number(value.slice(0,4));day=null;await load();}
  function adjacentMonth(offset){const [y,m]=month.split('-').map(Number),d=new Date(y,m-1+offset,1);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;}
  const monthPicker=el('div',undefined,'month-picker');
@@ -112,13 +135,12 @@ function attendance(){
  previousMonth.setAttribute('aria-label','前の月');nextMonth.setAttribute('aria-label','次の月');
  previousMonth.disabled=month==='1900-01';nextMonth.disabled=month==='2100-12';
  monthNav.append(previousMonth,el('h2',`${Number(month.slice(0,4))}年${Number(month.slice(5))}月の回答`),nextMonth);editor.append(monthNav);
- if(!day){editor.append(el('p','対象日がありません。'));return;}
- const answerDay=select(editor,'回答する日付',data.dates.map(d=>[d,dateLabel(d)]),day);
- answerDay.addEventListener('change',async()=>{const value=answerDay.value;if(!await flush()){answerDay.value=day;return;}day=value;renderDetail();});
+ renderCalendar();if(!day){editor.append(el('p','対象日がありません。'));return;}
+
  const nav=el('div',undefined,'day-nav'),index=data.dates.indexOf(day);const prev=button('←',async()=>{if(await flush()){day=data.dates[index-1];renderDetail();}}),next=button('→',async()=>{if(await flush()){day=data.dates[index+1];renderDetail();}});prev.disabled=index===0;next.disabled=index===data.dates.length-1;nav.append(prev,el('h2',dateLabel(day)),next);detail.append(nav);
  renderRespondents();
- const p=data.players.find(p=>p.id===selected);if(!p)return;const targetDay=day;let a=data.answers.find(a=>a.date===targetDay&&a.playerId===p.id);if(!a){a={playerId:p.id,date:targetDay,status:'',memo:'',version:-1};data.answers.push(a);}const form=el('div',undefined,'attendance-form');form.append(el('h2',`${p.name} の回答`));const choices=el('div',undefined,'answer-choices');const radios=[];for(const s of ['○','△','×']){const l=el('label'),radio=el('input');radio.type='radio';radio.name='answer';radio.value=s;radio.checked=a.status===s;radio.className='answer-radio';const label=el('span',s,'answer-option');l.append(radio,label);choices.append(l);radios.push(radio);}form.append(choices);const memo=field(form,'コメント','textarea',a.memo);memo.maxLength=500;
- const ctl=autosave(form,[...radios,memo],'/api/input/attendance',()=>{const status=radios.find(r=>r.checked)?.value;if(!status)throw Error('○・△・×を選択してください。');return {playerId:p.id,date:targetDay,status,memo:memo.value,version:a.version};},(r,v)=>{Object.assign(a,v,{version:r.version});for(const [date,row] of rows){const answers=data.answers.filter(a=>a.date===date);row.querySelectorAll('.day-counts span').forEach((span,i)=>{const s=['○','△','×'][i];span.textContent=`${s} ${answers.filter(a=>a.status===s).length}`;});}renderRespondents();});detailControllers.push(ctl);editor.append(form);
+ const p=data.players.find(p=>p.id===selected);if(!p)return;const targetDay=day;let a=data.answers.find(a=>a.date===targetDay&&a.playerId===p.id);if(!a){a={playerId:p.id,date:targetDay,status:'',memo:'',version:-1};data.answers.push(a);}const form=el('div',undefined,'attendance-form');form.append(el('h2',`${p.name} の回答`));const choices=el('div',undefined,'answer-choices');const radios=[];for(const s of ['○','△','×']){const l=el('label'),radio=el('input');radio.type='radio';radio.name='answer';radio.value=s;radio.checked=a.status===s;radio.className='answer-radio';const label=el('span',s,'answer-option');l.append(radio,label);choices.append(l);radios.push(radio);}form.dataset.status=a.status||'unanswered';form.append(el('p',dateLabel(targetDay)));form.append(choices);for(const radio of radios)radio.addEventListener('change',()=>{form.dataset.status=radio.value;});const memo=field(form,'コメント','textarea',a.memo);memo.maxLength=500;
+ const ctl=autosave(form,[...radios,memo],'/api/input/attendance',()=>{const status=radios.find(r=>r.checked)?.value;if(!status)throw Error('○・△・×を選択してください。');return {playerId:p.id,date:targetDay,status,memo:memo.value,version:a.version};},(r,v)=>{Object.assign(a,v,{version:r.version});for(const [date,row] of rows){const answers=data.answers.filter(a=>a.date===date);row.querySelectorAll('.day-counts span').forEach((span,i)=>{const s=['○','△','×'][i];span.textContent=`${s} ${answers.filter(a=>a.status===s).length}`;});}renderRespondents();updateCalendar();});detailControllers.push(ctl);editor.append(form);
  }
  refresh();}
 

@@ -15,17 +15,18 @@
         <p class="mt-1 text-sm text-gray-500">カレンダーから確認できます</p>
     </div>
 
-    <div class="rounded-2xl bg-white p-3 shadow-md ring-1 ring-gray-100">
-        <div id="calendar"></div>
-    </div>
-
     <div th:if="${userSession != null and userSession.canManage()}"
-         class="mt-6 text-right">
+         class="mb-5 text-right">
         <a th:href="@{/admin/schedules}"
            class="inline-block rounded-xl db-bg-brown px-4 py-2 text-sm font-bold text-white">
             活動予定を管理する
         </a>
     </div>
+    <div class="rounded-2xl bg-white p-3 shadow-md ring-1 ring-gray-100">
+        <div id="calendar"></div>
+    </div>
+
+
 
     <!-- 詳細モーダル -->
     <div id="scheduleModal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"
