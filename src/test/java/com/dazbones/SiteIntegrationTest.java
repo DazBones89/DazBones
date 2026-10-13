@@ -531,6 +531,19 @@ class SiteIntegrationTest {
         mvc.perform(get("/input").session(session).param("tab","fee").param("year","2025")).andExpect(redirectedUrl("/fee?year=2025"));
         mvc.perform(get("/players/stats")).andExpect(redirectedUrl("/login"));
     }
+    @Test void homeListsWholeCurrentMonthInDateOrder() throws Exception {
+        var start=LocalDate.now(java.time.ZoneId.of("Asia/Tokyo")).withDayOfMonth(1);
+        for(var date:java.util.List.of(start.plusMonths(1),start.plusDays(10),start,start.minusDays(1))) {
+            var s=new Schedule();s.setTitle("月間確認"+date);s.setEventDate(date);schedules.save(s);
+        }
+        var result=mvc.perform(get("/")).andExpect(status().isOk())
+            .andExpect(content().string(containsString("今月の活動予定")))
+            .andExpect(content().string(not(containsString("月間確認"+start.minusDays(1)))))
+            .andExpect(content().string(not(containsString("月間確認"+start.plusMonths(1)))))
+            .andReturn().getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
+        assertThat(result.indexOf("月間確認"+start)).isGreaterThanOrEqualTo(0)
+            .isLessThan(result.indexOf("月間確認"+start.plusDays(10)));
+    }
     @Test void battingRbiPersistsAndRespectsVisibilityAndVersion() throws Exception {
         var p=player("打点確認",10,2,"投手");var session=login("editor");
         String version=p.getVersion().toString();

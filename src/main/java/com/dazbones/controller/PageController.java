@@ -35,7 +35,8 @@ public class PageController {
         model.addAttribute("userSession", session.getAttribute("userSession"));
         model.addAttribute("newsList", newsService.visible(session.getAttribute("userSession") != null).stream().limit(3).toList());
         model.addAttribute("memberNewsList", session.getAttribute("userSession") != null ? newsService.memberTop3() : java.util.List.of());
-        model.addAttribute("todaySchedules", scheduleService.getToday());
+        var monthStart = java.time.LocalDate.now(java.time.ZoneId.of("Asia/Tokyo")).withDayOfMonth(1);
+        model.addAttribute("monthSchedules", scheduleService.getRange(monthStart, monthStart.plusMonths(1)));
 
         model.addAttribute("unpaidCount", feeService.unpaidCount());
 
