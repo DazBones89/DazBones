@@ -29,6 +29,10 @@ public class PlayerForm {
 
     @Min(value = 0, message = "ヒット数は0以上で入力してください")
     private Integer hits;
+    @Min(0)
+    private Integer rbi;
+    public Integer getRbi() { return rbi; }
+    public void setRbi(Integer rbi) { this.rbi = rbi; }
 
     @Size(max = 255, message = "コメントは255文字以内で入力してください")
     private String comment;

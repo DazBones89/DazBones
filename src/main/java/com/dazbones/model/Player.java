@@ -30,6 +30,10 @@ public class Player {
     private Integer atBats;
 
     private Integer hits;
+    @Column(nullable = false)
+    private Integer rbi = 0;
+    public Integer getRbi() { return rbi; }
+    public void setRbi(Integer rbi) { this.rbi = rbi; }
 
     @Column(name = "delete_flg")
     private Integer deleteFlg;

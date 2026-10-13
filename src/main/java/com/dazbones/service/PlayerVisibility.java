@@ -7,7 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PlayerVisibility {
  public static final Map<String,String> FIELDS;
- static {var m=new LinkedHashMap<String,String>();m.put("name","名前");m.put("backNumber","背番号");m.put("positions","守備位置");m.put("throwHand","投げ");m.put("batHand","打ち");m.put("image","写真");m.put("comment","コメント");m.put("atBats","打数");m.put("hits","安打");m.put("average","打率");FIELDS=Collections.unmodifiableMap(m);}
+ static {var m=new LinkedHashMap<String,String>();m.put("name","名前");m.put("backNumber","背番号");m.put("positions","守備位置");m.put("throwHand","投げ");m.put("batHand","打ち");m.put("image","写真");m.put("comment","コメント");m.put("atBats","打数");m.put("hits","安打");m.put("rbi","打点");m.put("average","打率");FIELDS=Collections.unmodifiableMap(m);}
  private final SiteSettingRepository repo; private final SecurityStateRepository states;
  public PlayerVisibility(SiteSettingRepository repo,SecurityStateRepository states){this.repo=repo;this.states=states;}
  public boolean visible(String field,UserSession user){return user!=null&&user.isMaster() || !repo.findById("player."+field).map(s->s.value.equals("hidden")).orElse(false);}

@@ -531,6 +531,24 @@ class SiteIntegrationTest {
         mvc.perform(get("/input").session(session).param("tab","fee").param("year","2025")).andExpect(redirectedUrl("/fee?year=2025"));
         mvc.perform(get("/players/stats")).andExpect(redirectedUrl("/login"));
     }
+    @Test void battingRbiPersistsAndRespectsVisibilityAndVersion() throws Exception {
+        var p=player("打点確認",10,2,"投手");var session=login("editor");
+        String version=p.getVersion().toString();
+        mvc.perform(post("/api/input/stats").session(session).with(csrf())
+            .param("playerId",p.getId().toString()).param("version",version)
+            .param("atBats","14").param("hits","4").param("rbi","3")).andExpect(status().isOk());
+        assertThat(players.findById(p.getId()).orElseThrow().getRbi()).isEqualTo(3);
+        mvc.perform(post("/api/input/stats").session(session).with(csrf())
+            .param("playerId",p.getId().toString()).param("version",version)
+            .param("atBats","18").param("hits","6").param("rbi","6")).andExpect(status().isConflict());
+        visibility.set("rbi",false);
+        mvc.perform(get("/api/input").session(session).param("year","2026").param("month","2026-10"))
+            .andExpect(jsonPath("$.players[0].rbi").doesNotExist());
+        mvc.perform(post("/api/input/stats").session(session).with(csrf())
+            .param("playerId",p.getId().toString()).param("version",players.findById(p.getId()).orElseThrow().getVersion().toString())
+            .param("atBats","14").param("hits","4").param("rbi","4")).andExpect(status().isForbidden());
+        assertThat(players.findById(p.getId()).orElseThrow().getRbi()).isEqualTo(3);
+    }
     @Test void bothRolesCanSelectAndEditPlayerProfile() throws Exception {
         var p=player("編集対象",1,1,"投手");
         for(String role : new String[]{"editor","admin"}) {

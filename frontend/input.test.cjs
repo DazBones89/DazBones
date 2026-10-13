@@ -19,7 +19,7 @@ async function screen(tab, options = {}) {
   app.dataset.page = tab; app.dataset.csrf = 'test-token'; app.dataset.csrfHeader = 'X-CSRF-TOKEN';
   const state = {
     players: [{ id: 1, name: '選手A', atBats: 10, hits: 2, version: 0 }, { id: 2, name: '選手B', atBats: 5, hits: 1, version: 0 }],
-    fields: { atBats: true, hits: true, average: true }, fees: [], gears: [],
+    fields: { atBats: true, hits: true, rbi: true, average: true }, fees: [], gears: [],
     dates: ['2026-09-05', '2026-09-06'], answers: [], year: 2026, month: '2026-09'
   };
   const calls = [];
@@ -79,9 +79,30 @@ test('stats autosave serializes rapid changes using the returned version', async
     s.change(hits, '5'); release();
     await until(() => s.calls.length === 2 && s.q('.attendance-form .save-state, #inputContent > .input-card .save-state').textContent === '保存済み');
     assert.equal(s.calls[1].values.version, '1');
-    assert.equal(s.calls[1].values.hits, '5');
-    assert.match(s.q('#inputContent').textContent, /0.250/);
+    assert.equal(s.calls[1].values.hits, '7');
+    assert.equal(s.calls[1].values.atBats, '30');
+    assert.match(s.q('#inputContent').textContent, /0.233/);
   } finally { s.dom.window.close(); }
+});
+
+test('current batting corrections apply differences and cumulative values remain editable', async () => {
+  const s=await screen('stats');
+  try {
+    const current=key=>s.q(`[data-kind="current"][data-stat="${key}"]`);
+    const total=key=>s.q(`[data-kind="total"][data-stat="${key}"]`);
+    const save=async(input,value)=>{const n=s.calls.length;s.change(input,value);await until(()=>s.calls.length===n+1&&s.q('.save-state').textContent==='保存済み');};
+    assert.equal(total('atBats').value,'10');
+    await save(current('atBats'),'4');assert.equal(total('atBats').value,'14');
+    await save(current('hits'),'2');assert.equal(total('hits').value,'4');
+    await save(current('rbi'),'3');assert.equal(total('rbi').value,'3');
+    await save(current('hits'),'1');assert.equal(total('hits').value,'3');
+    await save(total('atBats'),'20');assert.equal(total('atBats').value,'20');
+    await save(current('rbi'),'2');assert.equal(total('rbi').value,'2');
+    s.qa('button').find(b=>b.textContent==='次の試合分を入力').click();
+    await until(()=>current('atBats').value==='0');
+    assert.equal(total('atBats').value,'20');
+    await save(current('atBats'),'3');assert.equal(total('atBats').value,'23');
+  } finally {s.dom.window.close();}
 });
 
 test('fee check moves the name between paid and unpaid without navigation', async () => {

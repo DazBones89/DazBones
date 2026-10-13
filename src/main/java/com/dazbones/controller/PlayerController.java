@@ -42,6 +42,7 @@ public class PlayerController {
         if(!v.get("batHand"))f.setBatHand(p==null?null:p.getBatHand());
         if(!v.get("atBats"))f.setAtBats(p==null?0:p.getAtBats());
         if(!v.get("hits"))f.setHits(p==null?0:p.getHits());
+        if(!v.get("rbi"))f.setRbi(p==null?0:p.getRbi());
         if(!v.get("comment"))f.setComment(p==null?null:p.getComment());
         if(!v.get("positions"))f.setPositions(p==null?java.util.List.of():p.getPositions().stream().map(PlayerPosition::getPosition).toList());
     }
@@ -255,6 +256,7 @@ public class PlayerController {
         form.setBatHand(player.getBatHand());
         form.setAtBats(player.getAtBats());
         form.setHits(player.getHits());
+        form.setRbi(player.getRbi());
         form.setComment(player.getComment());
 
         List<String> positions = new ArrayList<>();
@@ -275,6 +277,7 @@ public class PlayerController {
         player.setBatHand(form.getBatHand());
         player.setAtBats(form.getAtBats() == null ? 0 : form.getAtBats());
         player.setHits(form.getHits() == null ? 0 : form.getHits());
+        if (form.getRbi() != null) player.setRbi(form.getRbi());
         player.setComment(form.getComment());
 
         if (player.getPositions() == null) {

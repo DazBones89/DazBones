@@ -23,7 +23,7 @@ public class InputService {
   allowed(u);year(year);YearMonth m=attendance.month(month);var roster=players.findActivePlayers();var fields=visibility.fields(u);
   List<Map<String,Object>> ps=new ArrayList<>();
   for(var p:roster){var r=new LinkedHashMap<String,Object>();r.put("id",p.getId());r.put("name",fields.get("name")?p.getName():"選手 #"+p.getId());r.put("version",p.getVersion());
-   if(fields.get("atBats"))r.put("atBats",p.getAtBats());if(fields.get("hits"))r.put("hits",p.getHits());if(fields.get("average")&&fields.get("atBats")&&fields.get("hits"))r.put("average",p.getDisplayAverage());ps.add(r);}
+   if(fields.get("atBats"))r.put("atBats",p.getAtBats());if(fields.get("hits"))r.put("hits",p.getHits());if(fields.get("rbi"))r.put("rbi",p.getRbi());if(fields.get("average")&&fields.get("atBats")&&fields.get("hits"))r.put("average",p.getDisplayAverage());ps.add(r);}
   var fs=new ArrayList<Map<String,Object>>(); for(var f:fees.findByFiscalYearOrderByPlayerIdAsc(year))fs.add(Map.of("playerId",f.getPlayerId(),"paid",f.isPaid(),"amount",f.getAmount(),"comment",Objects.toString(f.getComment(),""),"version",f.getVersion()));
   var gs=new ArrayList<Map<String,Object>>();for(var g:gears.findAll()){var r=new LinkedHashMap<String,Object>();r.put("id",g.getId());r.put("name",g.getName());r.put("ownerId",g.getOwnerId());r.put("comment",Objects.toString(g.getComment(),""));r.put("version",g.getVersion());gs.add(r);}
   var as=new ArrayList<Map<String,Object>>();var ids=roster.stream().map(Player::getId).toList();
@@ -31,7 +31,11 @@ public class InputService {
   return Map.of("players",ps,"fields",fields,"fees",fs,"gears",gs,"dates",attendance.dates(m).stream().map(LocalDate::toString).toList(),"answers",as,"year",year,"month",m.toString());
  }
  @Transactional public Map<String,Object> stats(UserSession u,Long id,Integer atBats,Integer hits,Long expected){
+  return stats(u,id,atBats,hits,null,expected);
+ }
+ @Transactional public Map<String,Object> stats(UserSession u,Long id,Integer atBats,Integer hits,Integer rbi,Long expected){
   allowed(u);states.lockState();var p=active(id);version(p.getVersion(),expected);
+  if(rbi!=null){if(!visibility.visible("rbi",u))throw new ResponseStatusException(HttpStatus.FORBIDDEN);if(rbi<0)throw new IllegalArgumentException("打点は0以上で入力してください");p.setRbi(rbi);}
   if(atBats!=null){if(!visibility.visible("atBats",u))throw new ResponseStatusException(HttpStatus.FORBIDDEN);p.setAtBats(atBats);}
   if(hits!=null){if(!visibility.visible("hits",u))throw new ResponseStatusException(HttpStatus.FORBIDDEN);p.setHits(hits);}
   if(visibility.visible("atBats",u)&&atBats==null || visibility.visible("hits",u)&&hits==null)throw new IllegalArgumentException("表示中の打数・安打を入力してください");

@@ -7,6 +7,6 @@
 <p th:if="${visible.throwHand}" th:text="${p.throwHand != null ? p.throwHand + '投' : ''}"></p><p th:if="${visible.batHand}" th:text="${p.batHand != null ? p.batHand + '打' : ''}"></p>
 <p th:if="${visible.positions}"><span th:each="pos:${p.positions}" th:text="${pos.position + ' '}"></span></p>
 <p th:if="${visible.atBats}" th:text="${'打数：' + p.atBats}"></p><p th:if="${visible.hits}" th:text="${'安打：' + p.hits}"></p>
-<p th:if="${visible.average and visible.atBats and visible.hits}" th:text="${'打率：' + p.displayAverage}"></p><p th:if="${visible.comment}" th:text="${p.comment}"></p>
+<p th:if="${visible.rbi}" th:text="${'打点：' + p.rbi}"></p><p th:if="${visible.average and visible.atBats and visible.hits}" th:text="${'打率：' + p.displayAverage}"></p><p th:if="${visible.comment}" th:text="${p.comment}"></p>
 <form th:if="${userSession != null and userSession.isMaster()}" th:action="@{/players/{id}/visibility(id=${p.id})}" class="auto-setting" method="post"><label><input type="checkbox" name="visible" th:checked="${p.deleteFlg == 0}"> この選手を表示</label><output aria-live="polite"></output></form>
 </div></article><script src="/js/settings.js" defer></script></section></body></html>

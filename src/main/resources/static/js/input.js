@@ -19,9 +19,45 @@ async function flush(){for(const c of controllers)if(!await c.flush())return fal
 window.addEventListener('beforeunload',e=>{if(actionBusy||controllers.some(c=>c.pending())){e.preventDefault();e.returnValue='';}});
 async function load(){notice.textContent='読み込み中…';notice.className='';try{const r=await fetch(`/api/input?year=${year}&month=${month}`);if(!r.ok)throw Error('読み込めませんでした。ログインと通信状態を確認してください。');data=await r.json();if(!data.players.some(p=>p.id===selected))selected=null;const blank=el('option','');blank.value='';playerSelect.replaceChildren(blank);for(const p of data.players){const o=el('option',p.name);o.value=p.id;playerSelect.append(o);}playerSelect.value=selected??'';notice.textContent='';render();}catch(e){notice.textContent=e.message;notice.className='error';}}
 function render(){const title={stats:'打撃成績',fee:'部費',gear:'道具管理',attendance:'出欠確認'}[tab];q('h1').textContent=title;document.title=title+' | DazBones';controllers=[];content.replaceChildren();yearInput.value=year;q('#yearField').hidden=!['fee','attendance'].includes(tab);q('#playerField').hidden=tab==='gear';app.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.tab===tab)));if(tab==='stats')stats();else if(tab==='fee')fee();else if(tab==='gear')gear();else attendance();}
-function stats(){const p=data.players.find(p=>p.id===selected);if(!p){content.append(el('p',data.players.length?'選手を選択してください。':'表示中の選手がいません。'));return;}const c=card('打撃成績'),inputs=[];let bats,hits;
- if(data.fields.atBats){bats=field(c,'打数','number',p.atBats??0);bats.min='0';inputs.push(bats);}if(data.fields.hits){hits=field(c,'安打','number',p.hits??0);hits.min='0';inputs.push(hits);}const avg=el('p');const average=()=>{if(data.fields.average&&bats&&hits)avg.textContent=`打率：${Number(bats.value)>0?(Number(hits.value)/Number(bats.value)).toFixed(3):'---'}`;};inputs.forEach(i=>i.addEventListener('input',average));average();c.append(avg);
- if(inputs.length)autosave(c,inputs,'/api/input/stats',()=>{if([bats,hits].filter(Boolean).some(i=>i.value===''||!Number.isInteger(Number(i.value))||Number(i.value)<0))throw Error('打数・安打は0以上の整数を入力してください。');return {playerId:p.id,version:p.version,atBats:bats?bats.value:null,hits:hits?hits.value:null};},(r,payload)=>{p.version=r.version;if(bats)p.atBats=Number(payload.atBats);if(hits)p.hits=Number(payload.hits);});else c.append(el('p','打数・安打は非表示に設定されています。'));content.append(c);}
+function stats(){
+ const p=data.players.find(p=>p.id===selected);if(!p){content.append(el('p',data.players.length?'選手を選択してください。':'表示中の選手がいません。'));return;}
+ const c=card('打撃成績'),grid=el('div',undefined,'batting-columns'),current=el('div'),total=el('div');
+ current.append(el('h3','今回分'));total.append(el('h3','累積'));grid.append(current,total);c.append(grid);
+ const rows={},inputs=[];let snapshot;
+ for(const [key,label] of [['atBats','打数'],['hits','安打'],['rbi','打点']]){
+  if(!data.fields[key])continue;
+  const left=field(current,label,'number',0),right=field(total,label,'number',p[key]??0);
+  for(const i of [left,right]){i.min='0';i.max='2147483647';i.step='1';inputs.push(i);}
+  left.dataset.stat=key;left.dataset.kind='current';right.dataset.stat=key;right.dataset.kind='total';
+  rows[key]={left,right,applied:0};
+ }
+ const avg=el('p');const average=()=>{if(data.fields.average&&rows.atBats&&rows.hits)avg.textContent=`累積打率：${p.atBats>0?(p.hits/p.atBats).toFixed(3):'---'}`;};average();c.append(avg);
+ if(inputs.length){
+  autosave(c,inputs,'/api/input/stats',()=>{
+   const payload={playerId:p.id,version:p.version};snapshot={};
+   for(const [key,row] of Object.entries(rows)){
+    if([row.left,row.right].some(i=>i.value===''||!Number.isInteger(Number(i.value))||Number(i.value)<0||Number(i.value)>2147483647))throw Error('0以上の整数を入力してください。');
+    const left=Number(row.left.value),right=Number(row.right.value),value=right+left-row.applied;
+    if(value<0||value>2147483647)throw Error('累積が範囲外です。今回分と累積を確認してください。');
+    snapshot[key]={left,right};payload[key]=value;
+   }
+   if(rows.atBats&&rows.hits&&(snapshot.hits.left>snapshot.atBats.left||payload.hits>payload.atBats))throw Error('安打は打数以下で入力してください。');
+   return payload;
+  },(r,payload)=>{
+   p.version=r.version;
+   for(const [key,row] of Object.entries(rows)){
+    p[key]=payload[key];row.applied=snapshot[key].left;
+    // Keep any newer cumulative edit while a save was in flight.
+    if(Number(row.right.value)===snapshot[key].right&&row.right.value!=='')row.right.value=payload[key];
+   }
+   average();
+  });
+  c.append(el('p','今回分は自動で累積に加算されます。同じ画面での訂正は差分を反映します。','muted'));
+  c.append(button('次の試合分を入力',async()=>{if(await flush())statsReset();}));
+ }else c.append(el('p','打撃成績は非表示に設定されています。'));
+ function statsReset(){render();}
+ content.append(c);
+}
 function fee(){const grid=el('div',undefined,'input-grid fee-grid');const paid=card('支払い済み'),unpaid=card('未払い');const paidList=el('ul',undefined,'name-list'),unpaidList=el('ul',undefined,'name-list');paid.append(paidList);unpaid.append(unpaidList);grid.append(unpaid,paid);const refresh=()=>{paidList.replaceChildren();unpaidList.replaceChildren();for(const p of data.players){const f=data.fees.find(f=>f.playerId===p.id);(f?.paid?paidList:unpaidList).append(el('li',f?.paid?`${p.name}　${Number(f.amount??0).toLocaleString('ja-JP')}円`:p.name));}if(!paidList.children.length)paidList.append(el('li','該当者なし'));if(!unpaidList.children.length)unpaidList.append(el('li','該当者なし'));};refresh();content.append(grid);
  const p=data.players.find(p=>p.id===selected);if(!p)return;let f=data.fees.find(f=>f.playerId===p.id);if(!f){f={playerId:p.id,paid:false,amount:0,comment:'',version:-1};data.fees.push(f);}const c=card(`${year}年度・${p.name}`),check=field(c,'支払い済み','checkbox',f.paid),amount=field(c,'金額（円）','number',f.amount??0),memo=field(c,'コメント','textarea',f.comment);amount.min='0';amount.max='100000000';amount.step='1';memo.maxLength=1000;autosave(c,[check,amount,memo],'/api/input/fee',()=>{if(amount.value===''||!Number.isInteger(Number(amount.value))||Number(amount.value)<0||Number(amount.value)>100000000)throw Error('金額は0〜100000000円の整数を入力してください。');return {playerId:p.id,year,paid:check.checked,amount:Number(amount.value),comment:memo.value,version:f.version};},(r,v)=>{Object.assign(f,{version:r.version,paid:v.paid,amount:v.amount,comment:v.comment});refresh();});content.append(c);}
 function gear(){content.append(el('p','道具の種類・持ち主を設定します。道具名を入力すると自動登録されます。','muted'));const shortcuts=el('nav',undefined,'gear-shortcuts');shortcuts.setAttribute('aria-label','登録済みの道具');content.append(shortcuts);const refreshLinks=()=>{shortcuts.replaceChildren();for(const item of data.gears){const link=el('a',item.name);link.href='#gear-'+item.id;shortcuts.append(link);}if(!data.gears.length)shortcuts.append(el('p','登録済みの道具はありません。','muted'));};refreshLinks();for(const g of [...data.gears,{id:null,name:'',ownerId:null,comment:'',version:-1}]){const c=card(g.id?'道具':'道具を追加'),name=field(c,'道具の種類','text',g.name);c.classList.add('gear-entry');if(g.id)c.id='gear-'+g.id;name.maxLength=100;const opts=[['','未設定'],...data.players.map(p=>[p.id,p.name])];if(g.ownerId&&!data.players.some(p=>p.id===g.ownerId))opts.push([g.ownerId,'非表示の選手（現在の持ち主）']);const owner=select(c,'持ち主',opts,g.ownerId),memo=field(c,'コメント','textarea',g.comment);memo.maxLength=1000;
