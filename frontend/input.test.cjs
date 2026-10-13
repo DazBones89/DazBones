@@ -22,6 +22,7 @@ async function screen(tab, options = {}) {
     fields: { atBats: true, hits: true, rbi: true, average: true }, fees: [], gears: [],
     dates: ['2026-09-05', '2026-09-06'], answers: [], year: 2026, month: '2026-09'
   };
+  Object.assign(state, options.state);
   const calls = [];
   window.fetch = async (path, init) => {
     if (!init) return { ok: true, json: async () => structuredClone(state) };
@@ -261,4 +262,25 @@ test('bulk failure leaves existing answers unchanged and permits retry', async (
     assert.equal(s.q('.bulk-attendance input').checked,false);
     assert.equal(s.q('.bulk-attendance input').disabled,false);
   } finally {s.dom.window.close();}
+});
+
+
+test('attendance highlights all best days, with circles before triangles, and updates after saving', async () => {
+ const dates=['2026-09-05','2026-09-06','2026-09-12'];
+ const answers=[{playerId:2,date:dates[0],status:'○',version:0},{playerId:2,date:dates[1],status:'○',version:0},{playerId:1,date:dates[1],status:'△',version:0},{playerId:1,date:dates[2],status:'△',version:0},{playerId:2,date:dates[2],status:'△',version:0}];
+ const s=await screen('attendance',{state:{dates,answers}});
+ try {
+  const highlighted=()=>s.qa('.day-row').map((r,i)=>r.classList.contains('best-attendance-day')?i:-1).filter(i=>i>=0);
+  assert.deepEqual(highlighted(),[1]);
+  s.change(s.q('input[value="△"]'),true);
+  await until(()=>highlighted().length===2);
+  assert.deepEqual(highlighted(),[0,1]);
+  s.change(s.q('input[value="○"]'),true);
+  await until(()=>highlighted().length===1&&highlighted()[0]===0);
+  assert.deepEqual(highlighted(),[0]);
+ } finally {s.dom.window.close();}
+});
+test('unanswered days are not highlighted as most participants',async()=>{
+ const s=await screen('attendance');
+ try{assert.equal(s.qa('.best-attendance-day').length,0);}finally{s.dom.window.close();}
 });
